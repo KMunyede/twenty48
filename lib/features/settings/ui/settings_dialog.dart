@@ -66,7 +66,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             'Normal Mode',
                             'Standard 2048 gameplay',
                             Icons.videogame_asset,
-                            () => context.read<GameProvider>().initGame(),
+                            () => context.read<GameProvider>().setStandardMode(),
                           ),
                           _buildModeTile(
                             context,

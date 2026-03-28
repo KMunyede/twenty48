@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/tile.dart';
 
 class GameProvider extends ChangeNotifier {
@@ -37,28 +38,35 @@ class GameProvider extends ChangeNotifier {
   int get targetValue => _targetValue;
 
   GameProvider() {
-    initGame();
+    _loadSettings().then((_) => initGame());
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    _isTimerMode = prefs.getBool('isTimerMode') ?? false;
+    _targetValue = prefs.getInt('targetValue') ?? 1024;
+  }
+
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isTimerMode', _isTimerMode);
+    await prefs.setInt('targetValue', _targetValue);
   }
 
   void startTimerChallenge(int target) {
     _isTimerMode = true;
     _targetValue = target;
-    _remainingSeconds = target == 2048 ? 360 : 300;
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds > 0 && !_isGameOver) {
-        _remainingSeconds--;
-        notifyListeners();
-      } else if (_remainingSeconds <= 0) {
-        _isGameOver = true;
-        _timer?.cancel();
-        notifyListeners();
-      }
-    });
-    initGame(keepTimerMode: true);
+    _saveSettings();
+    initGame();
   }
 
-  void initGame({bool keepTimerMode = false}) {
+  void setStandardMode() {
+    _isTimerMode = false;
+    _saveSettings();
+    initGame();
+  }
+
+  void initGame() {
     _tiles = [];
     _score = 0;
     _isGameOver = false;
@@ -68,9 +76,10 @@ class GameProvider extends ChangeNotifier {
     _scoreHistory.clear();
     _timerHistory.clear();
     
-    if (!keepTimerMode) {
-      _isTimerMode = false;
-      _timer?.cancel();
+    _timer?.cancel();
+    if (_isTimerMode) {
+      _remainingSeconds = _targetValue == 2048 ? 360 : 300;
+      _startTimer();
     }
     
     notifyListeners();
@@ -79,6 +88,20 @@ class GameProvider extends ChangeNotifier {
       _addNewTile();
       _addNewTile();
       notifyListeners();
+    });
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0 && !_isGameOver) {
+        _remainingSeconds--;
+        notifyListeners();
+      } else if (_remainingSeconds <= 0 && !_isGameOver) {
+        _isGameOver = true;
+        _timer?.cancel();
+        notifyListeners();
+      }
     });
   }
 
