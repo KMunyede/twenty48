@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:confetti/confetti.dart';
 import '../providers/game_provider.dart';
 import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
@@ -16,9 +17,11 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
+class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late FocusNode _focusNode;
   late AnimationController _timerAnimationController;
+  late ConfettiController _confettiController;
+  late AnimationController _shakeController;
 
   @override
   void initState() {
@@ -28,23 +31,47 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 500),
     )..repeat(reverse: true);
+    
+    _confettiController = ConfettiController(duration: const Duration(seconds: 7));
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
     _timerAnimationController.dispose();
+    _confettiController.dispose();
+    _shakeController.dispose();
     super.dispose();
+  }
+
+  void _onGameUpdate() {
+    final game = context.read<GameProvider>();
+    if (game.shouldCelebrate) {
+      _confettiController.play();
+      _shakeController.forward(from: 0.0);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
-    final game = context.read<GameProvider>();
+    final game = context.watch<GameProvider>(); // Switch to watch to react to celebration flags
 
     // Ensure we request focus whenever the screen is built to catch keyboard events
     if (!_focusNode.hasFocus) {
       _focusNode.requestFocus();
+    }
+
+    // Trigger animations if needed
+    if (game.shouldCelebrate && _shakeController.status != AnimationStatus.forward) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _confettiController.play();
+        _shakeController.forward(from: 0.0);
+      });
     }
 
     return Focus(
@@ -83,21 +110,54 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
           ],
         ),
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 32),
-                Expanded(
-                  child: Center(
-                    child: _buildGameBoard(context),
-                  ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 32),
+                    Expanded(
+                      child: Center(
+                        child: AnimatedBuilder(
+                          animation: _shakeController,
+                          builder: (context, child) {
+                            final double shake = sin(_shakeController.value * 10 * pi) * 10 * (1 - _shakeController.value);
+                            return Transform.translate(
+                              offset: Offset(shake, 0),
+                              child: _buildGameBoard(context),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    _buildControls(context),
+                  ],
                 ),
-                const SizedBox(height: 32),
-                _buildControls(context),
-              ],
-            ),
+              ),
+              // Confetti Overlay
+              Align(
+                alignment: Alignment.topCenter,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirection: pi / 2, // downwards
+                  maxBlastForce: 5,
+                  minBlastForce: 2,
+                  emissionFrequency: 0.05,
+                  numberOfParticles: 50,
+                  gravity: 0.1,
+                ),
+              ),
+              // Floating Bonus Time
+              if (game.lastBonusTime > 0)
+                Positioned(
+                  top: 100,
+                  right: 50,
+                  child: _BonusTimeAnimation(bonus: game.lastBonusTime),
+                ),
+            ],
           ),
         ),
       ),
@@ -450,6 +510,81 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
               ],
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _BonusTimeAnimation extends StatefulWidget {
+  final int bonus;
+  const _BonusTimeAnimation({required this.bonus});
+
+  @override
+  State<_BonusTimeAnimation> createState() => _BonusTimeAnimationState();
+}
+
+class _BonusTimeAnimationState extends State<_BonusTimeAnimation> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+  late Animation<Offset> _moveAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+
+    _opacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 60),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 20),
+    ]).animate(_controller);
+
+    _moveAnimation = Tween<Offset>(
+      begin: const Offset(0, 0),
+      end: const Offset(0, -100),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: _moveAnimation.value,
+          child: Opacity(
+            opacity: _opacityAnimation.value,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                ],
+              ),
+              child: Text(
+                '+${widget.bonus}s',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+          ),
         );
       },
     );

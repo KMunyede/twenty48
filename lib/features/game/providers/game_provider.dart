@@ -27,6 +27,11 @@ class GameProvider extends ChangeNotifier {
   final List<int> _scoreHistory = [];
   final List<int> _timerHistory = [];
 
+  // Effects State
+  int _lastBonusTime = 0;
+  bool _shouldCelebrate = false;
+  int _celebrationId = 0; // To trigger UI updates for the same target reached twice
+
   List<Tile> get tiles => _tiles;
   int get score => _score;
   bool get isGameOver => _isGameOver;
@@ -36,6 +41,9 @@ class GameProvider extends ChangeNotifier {
   bool get isTimerMode => _isTimerMode;
   int get remainingSeconds => _remainingSeconds;
   int get targetValue => _targetValue;
+  int get lastBonusTime => _lastBonusTime;
+  bool get shouldCelebrate => _shouldCelebrate;
+  int get celebrationId => _celebrationId;
 
   GameProvider() {
     _loadSettings().then((_) => initGame());
@@ -239,11 +247,17 @@ class GameProvider extends ChangeNotifier {
             else if (val == 128) bonusTime += 15;
             else if (val == 256) bonusTime += 20;
             else if (val == 512) bonusTime += 30;
-            else if (val == 1024) bonusTime += 40;
+            else if (val >= 1024) bonusTime += 40;
 
             if (val >= _targetValue) {
               _isGameOver = true; // Win condition in timer mode
             }
+          }
+
+          // Check for celebration (1024, 2048, 4096, 8192)
+          if (val >= 1024 && [1024, 2048, 4096, 8192].contains(val)) {
+            _shouldCelebrate = true;
+            _celebrationId++;
           }
 
           // Important: Keep the ID of the 'leading' tile for smooth animation
@@ -285,9 +299,19 @@ class GameProvider extends ChangeNotifier {
 
       _tiles = nextTiles;
       _remainingSeconds += bonusTime;
+      _lastBonusTime = bonusTime; // Set last bonus time for UI
       _addNewTile();
       _isGameOver = _isGameOver || _calculateGameOver();
       notifyListeners();
+      
+      // Reset flags after a short delay so UI can pick them up
+      if (_lastBonusTime > 0 || _shouldCelebrate) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _lastBonusTime = 0;
+          _shouldCelebrate = false;
+          notifyListeners();
+        });
+      }
     }
   }
 
