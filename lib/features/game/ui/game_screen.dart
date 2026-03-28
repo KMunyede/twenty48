@@ -9,16 +9,46 @@ import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
 import 'widgets/tile_widget.dart';
 
-class GameScreen extends StatelessWidget {
+class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
+
+  @override
+  State<GameScreen> createState() => _GameScreenState();
+}
+
+class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
+  late FocusNode _focusNode;
+  late AnimationController _timerAnimationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _timerAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _timerAnimationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     final game = context.read<GameProvider>();
 
+    // Ensure we request focus whenever the screen is built to catch keyboard events
+    if (!_focusNode.hasFocus) {
+      _focusNode.requestFocus();
+    }
+
     return Focus(
-      autofocus: true,
+      focusNode: _focusNode,
       onKeyEvent: (FocusNode node, KeyEvent event) {
         if (event is KeyDownEvent) {
           if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -78,43 +108,122 @@ class GameScreen extends StatelessWidget {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return Consumer<GameProvider>(
       builder: (context, game, child) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return Stack(
+          alignment: Alignment.center,
           children: [
-            Text(
-              '2048',
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: theme.textColor,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.scoreTileColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'SCORE',
-                    style: TextStyle(
-                      color: theme.backgroundColor,
-                      fontWeight: FontWeight.bold,
-                    ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '2048',
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textColor,
                   ),
-                  Text(
-                    '${game.score}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: theme.scoreTileColor,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
-              ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'SCORE',
+                        style: TextStyle(
+                          color: theme.backgroundColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${game.score}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            if (game.isTimerMode)
+              AnimatedBuilder(
+                animation: _timerAnimationController,
+                builder: (context, child) {
+                  Color baseColor;
+                  bool shouldFlash;
+
+                  if (game.remainingSeconds >= 200) {
+                    baseColor = Colors.green;
+                    shouldFlash = false;
+                  } else if (game.remainingSeconds >= 100) {
+                    baseColor = Colors.yellow[700]!; // Darker yellow for better contrast
+                    shouldFlash = false;
+                  } else if (game.remainingSeconds >= 30) {
+                    baseColor = Colors.orange;
+                    shouldFlash = true;
+                  } else {
+                    baseColor = Colors.red;
+                    shouldFlash = true;
+                  }
+
+                  final displayColor = shouldFlash
+                      ? Color.lerp(
+                          baseColor.withOpacity(0.5),
+                          baseColor.withOpacity(1.0),
+                          _timerAnimationController.value,
+                        )
+                      : baseColor;
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: displayColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Time Challenge Mode',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Time Remaining:',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          '${game.remainingSeconds}s',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
           ],
         );
       },

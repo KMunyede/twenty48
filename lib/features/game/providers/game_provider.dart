@@ -1,5 +1,6 @@
 // lib/features/game/providers/game_provider.dart
 
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/tile.dart';
@@ -10,6 +11,12 @@ class GameProvider extends ChangeNotifier {
   int _score = 0;
   bool _isGameOver = false;
 
+  // Timer Challenge State
+  bool _isTimerMode = false;
+  int _remainingSeconds = 300;
+  int _targetValue = 1024;
+  Timer? _timer;
+
   // Swap Tile State
   bool _isSwapMode = false;
   Tile? _firstSelectedTile;
@@ -17,6 +24,7 @@ class GameProvider extends ChangeNotifier {
   // Undo history
   final List<List<Tile>> _tilesHistory = [];
   final List<int> _scoreHistory = [];
+  final List<int> _timerHistory = [];
 
   List<Tile> get tiles => _tiles;
   int get score => _score;
@@ -24,12 +32,33 @@ class GameProvider extends ChangeNotifier {
   bool get canUndo => _tilesHistory.isNotEmpty;
   bool get isSwapMode => _isSwapMode;
   Tile? get firstSelectedTile => _firstSelectedTile;
+  bool get isTimerMode => _isTimerMode;
+  int get remainingSeconds => _remainingSeconds;
+  int get targetValue => _targetValue;
 
   GameProvider() {
     initGame();
   }
 
-  void initGame() {
+  void startTimerChallenge(int target) {
+    _isTimerMode = true;
+    _targetValue = target;
+    _remainingSeconds = target == 2048 ? 360 : 300;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0 && !_isGameOver) {
+        _remainingSeconds--;
+        notifyListeners();
+      } else if (_remainingSeconds <= 0) {
+        _isGameOver = true;
+        _timer?.cancel();
+        notifyListeners();
+      }
+    });
+    initGame(keepTimerMode: true);
+  }
+
+  void initGame({bool keepTimerMode = false}) {
     _tiles = [];
     _score = 0;
     _isGameOver = false;
@@ -37,14 +66,26 @@ class GameProvider extends ChangeNotifier {
     _firstSelectedTile = null;
     _tilesHistory.clear();
     _scoreHistory.clear();
-    notifyListeners(); // Clear the board visually first
+    _timerHistory.clear();
+    
+    if (!keepTimerMode) {
+      _isTimerMode = false;
+      _timer?.cancel();
+    }
+    
+    notifyListeners();
 
-    // Use a small delay so the player sees the "New Game" transition
     Future.delayed(const Duration(milliseconds: 50), () {
       _addNewTile();
       _addNewTile();
       notifyListeners();
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   void _addNewTile() {
@@ -69,14 +110,13 @@ class GameProvider extends ChangeNotifier {
   }
 
   void toggleSwapMode() {
-    if (_isGameOver) return;
     _isSwapMode = !_isSwapMode;
     _firstSelectedTile = null;
     notifyListeners();
   }
 
   void selectTileForSwap(Tile tile) {
-    if (!_isSwapMode || _isGameOver) return;
+    if (!_isSwapMode) return;
 
     if (_firstSelectedTile == null) {
       _firstSelectedTile = tile;
@@ -98,9 +138,11 @@ class GameProvider extends ChangeNotifier {
     // Save state for undo
     _tilesHistory.add(_tiles.map((t) => t.copyWith()).toList());
     _scoreHistory.add(_score);
+    _timerHistory.add(_remainingSeconds);
     if (_tilesHistory.length > 10) {
       _tilesHistory.removeAt(0);
       _scoreHistory.removeAt(0);
+      _timerHistory.removeAt(0);
     }
 
     final index1 = _tiles.indexWhere((t) => t.id == t1.id);
@@ -115,7 +157,7 @@ class GameProvider extends ChangeNotifier {
       _tiles[index1] = _tiles[index1].copyWith(x: pos2x, y: pos2y);
       _tiles[index2] = _tiles[index2].copyWith(x: pos1x, y: pos1y);
       
-      _checkGameOver();
+      _isGameOver = _calculateGameOver();
     }
   }
 
@@ -125,22 +167,26 @@ class GameProvider extends ChangeNotifier {
   void moveDown() => _move(1, 0);
 
   void undo() {
-    if (!canUndo || _isGameOver) return;
+    if (!canUndo) return;
 
     _tiles = _tilesHistory.removeLast();
     _score = _scoreHistory.removeLast();
+    _remainingSeconds = _timerHistory.removeLast();
+    _isGameOver = _calculateGameOver(); // Recalculate in case we undo a loss
     notifyListeners();
   }
 
   void _move(int dx, int dy) {
-    if (_isGameOver) return;
+    if (_isGameOver || _isSwapMode) return; // Disable moves while swapping
 
     // Save current state for undo
     final currentTiles = _tiles.map((t) => t.copyWith()).toList();
     final currentScore = _score;
+    final currentTimer = _remainingSeconds;
 
     bool moved = false;
     List<Tile> nextTiles = [];
+    int bonusTime = 0;
 
     // Reset merged/new flags from previous turn
     _tiles = _tiles.map((t) => t.copyWith(isMerged: false, isNew: false)).toList();
@@ -164,6 +210,19 @@ class GameProvider extends ChangeNotifier {
         if (j + 1 < line.length && line[j].value == line[j + 1].value) {
           int val = line[j].value * 2;
           _score += val;
+          
+          if (_isTimerMode) {
+            if (val == 64) bonusTime += 10;
+            else if (val == 128) bonusTime += 15;
+            else if (val == 256) bonusTime += 20;
+            else if (val == 512) bonusTime += 30;
+            else if (val == 1024) bonusTime += 40;
+
+            if (val >= _targetValue) {
+              _isGameOver = true; // Win condition in timer mode
+            }
+          }
+
           // Important: Keep the ID of the 'leading' tile for smooth animation
           mergedLine.add(line[j].copyWith(
             value: val,
@@ -193,21 +252,24 @@ class GameProvider extends ChangeNotifier {
       // Move was successful, commit state to history
       _tilesHistory.add(currentTiles);
       _scoreHistory.add(currentScore);
+      _timerHistory.add(currentTimer);
       // Limit history to last 10 moves to save memory
       if (_tilesHistory.length > 10) {
         _tilesHistory.removeAt(0);
         _scoreHistory.removeAt(0);
+        _timerHistory.removeAt(0);
       }
 
       _tiles = nextTiles;
+      _remainingSeconds += bonusTime;
       _addNewTile();
-      _checkGameOver();
+      _isGameOver = _isGameOver || _calculateGameOver();
       notifyListeners();
     }
   }
 
-  void _checkGameOver() {
-    if (_tiles.length < gridSize * gridSize) return;
+  bool _calculateGameOver() {
+    if (_tiles.length < gridSize * gridSize) return false;
 
     for (var tile in _tiles) {
       for (var dir in [const Point(0, 1), const Point(0, -1), const Point(1, 0), const Point(-1, 0)]) {
@@ -215,11 +277,11 @@ class GameProvider extends ChangeNotifier {
         int ny = tile.y + dir.y;
         if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
           if (_tiles.any((t) => t.x == nx && t.y == ny && t.value == tile.value)) {
-            return;
+            return false;
           }
         }
       }
     }
-    _isGameOver = true;
+    return true;
   }
 }
