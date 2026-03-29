@@ -99,6 +99,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
+          toolbarHeight: 48,
           actions: [
             IconButton(
               icon: Icon(Icons.settings, color: theme.textColor),
@@ -110,115 +111,206 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ],
         ),
         body: SafeArea(
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 24),
-                    if (game.isTimerMode) ...[
-                      _buildTimer(context, game),
-                      const SizedBox(height: 24),
-                    ],
-                    Expanded(
-                      child: Center(
-                        child: AnimatedBuilder(
-                          animation: _shakeController,
-                          builder: (context, child) {
-                            final double shake = sin(_shakeController.value * 10 * pi) * 10 * (1 - _shakeController.value);
-                            return Transform.translate(
-                              offset: Offset(shake, 0),
-                              child: _buildGameBoard(context),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildControls(context),
-                  ],
-                ),
-              ),
-              // Confetti Overlay
-              Align(
-                alignment: Alignment.topCenter,
-                child: ConfettiWidget(
-                  confettiController: _confettiController,
-                  blastDirection: pi / 2, // downwards
-                  maxBlastForce: 5,
-                  minBlastForce: 2,
-                  emissionFrequency: 0.05,
-                  numberOfParticles: 50,
-                  gravity: 0.1,
-                ),
-              ),
-              // Floating Bonus Time
-              if (game.lastBonusTime > 0)
-                Positioned(
-                  top: 100,
-                  right: 50,
-                  child: _BonusTimeAnimation(bonus: game.lastBonusTime),
-                ),
-            ],
+          child: OrientationBuilder(
+            builder: (context, orientation) {
+              final bool isLandscape = orientation == Orientation.landscape;
+              
+              if (isLandscape) {
+                return _buildLandscapeLayout(context, game);
+              }
+              
+              return _buildPortraitLayout(context, game);
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildPortraitLayout(BuildContext context, GameProvider game) {
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            children: [
+              _buildHeader(context),
+              const SizedBox(height: 16),
+              if (game.isTimerMode) ...[
+                _buildTimer(context, game),
+                const SizedBox(height: 16),
+              ],
+              Expanded(
+                child: Center(
+                  child: _buildAnimatedGameBoard(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildControls(context),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+        _buildOverlays(game),
+      ],
+    );
+  }
+
+  Widget _buildLandscapeLayout(BuildContext context, GameProvider game) {
+    final size = MediaQuery.of(context).size;
+    final bool isLargeScreen = size.width > 1000;
+    
+    return Stack(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isLargeScreen ? 64.0 : 16.0,
+            vertical: isLargeScreen ? 32.0 : 16.0,
+          ),
+          child: Row(
+            children: [
+              // Left Column: Scores, Timer, Controls
+              Expanded(
+                flex: isLargeScreen ? 1 : 2,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildHeader(context, isCompact: !isLargeScreen, isExtraLarge: isLargeScreen),
+                      if (game.isTimerMode) ...[
+                        const SizedBox(height: 24),
+                        _buildTimer(context, game, isCompact: !isLargeScreen, isExtraLarge: isLargeScreen),
+                      ],
+                      const SizedBox(height: 40),
+                      _buildControls(context, isCompact: !isLargeScreen, isExtraLarge: isLargeScreen),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(width: isLargeScreen ? 64 : 24),
+              // Right Column: Game Board
+              Expanded(
+                flex: isLargeScreen ? 1 : 3,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isLargeScreen ? 600 : double.infinity,
+                      maxHeight: isLargeScreen ? 600 : double.infinity,
+                    ),
+                    child: _buildAnimatedGameBoard(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildOverlays(game),
+      ],
+    );
+  }
+
+  Widget _buildAnimatedGameBoard() {
+    return AnimatedBuilder(
+      animation: _shakeController,
+      builder: (context, child) {
+        final double shake = sin(_shakeController.value * 10 * pi) * 10 * (1 - _shakeController.value);
+        return Transform.translate(
+          offset: Offset(shake, 0),
+          child: _buildGameBoard(context),
+        );
+      },
+    );
+  }
+
+  Widget _buildOverlays(GameProvider game) {
+    return Stack(
+      children: [
+        // Confetti Overlay
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirection: pi / 2, // downwards
+            maxBlastForce: 5,
+            minBlastForce: 2,
+            emissionFrequency: 0.05,
+            numberOfParticles: 50,
+            gravity: 0.1,
+          ),
+        ),
+        // Floating Bonus Time
+        if (game.lastBonusTime > 0)
+          Positioned(
+            top: 100,
+            right: 50,
+            child: _BonusTimeAnimation(bonus: game.lastBonusTime),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, {bool isCompact = false, bool isExtraLarge = false}) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return Consumer<GameProvider>(
       builder: (context, game, child) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: isExtraLarge ? 24 : (isCompact ? 8 : 16),
+          runSpacing: 12,
           children: [
             _buildScoreBox(
               'SCORE',
               '${game.score}',
               theme,
-              isLarge: true,
+              isLarge: !isCompact || isExtraLarge,
+              isExtraLarge: isExtraLarge,
             ),
-            const SizedBox(width: 16),
             _buildScoreBox(
               'BEST',
               '${game.highScore}',
               theme,
-              isLarge: true,
+              isLarge: !isCompact || isExtraLarge,
+              isExtraLarge: isExtraLarge,
             ),
-            if (game.isTimerMode) ...[
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TARGET',
-                    style: TextStyle(
-                      color: theme.textColor.withOpacity(0.7),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+            if (game.isTimerMode)
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isExtraLarge ? 24 : 12, 
+                  vertical: isExtraLarge ? 16 : (isCompact ? 4 : 8)
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.textColor.withOpacity(0.3), width: isExtraLarge ? 2 : 1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'TARGET',
+                      style: TextStyle(
+                        color: theme.textColor.withOpacity(0.7),
+                        fontWeight: FontWeight.bold,
+                        fontSize: isExtraLarge ? 16 : (isCompact ? 9 : 12),
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${game.targetValue}',
-                    style: TextStyle(
-                      color: theme.textColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                    Text(
+                      '${game.targetValue}',
+                      style: TextStyle(
+                        color: theme.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isExtraLarge ? 32 : (isCompact ? 14 : 20),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ],
           ],
         );
       },
     );
   }
 
-  Widget _buildTimer(BuildContext context, GameProvider game) {
+  Widget _buildTimer(BuildContext context, GameProvider game, {bool isCompact = false, bool isExtraLarge = false}) {
     return AnimatedBuilder(
       animation: _timerAnimationController,
       builder: (context, child) {
@@ -248,35 +340,38 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             : baseColor) ?? baseColor;
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: isExtraLarge ? 64 : (isCompact ? 16 : 32), 
+            vertical: isExtraLarge ? 24 : (isCompact ? 8 : 12)
+          ),
           decoration: BoxDecoration(
             color: displayColor,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
                 color: displayColor.withOpacity(0.3),
-                blurRadius: 8,
-                spreadRadius: 2,
+                blurRadius: isExtraLarge ? 16 : 8,
+                spreadRadius: isExtraLarge ? 4 : 2,
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'TIME REMAINING',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  letterSpacing: 1.2,
+                  fontSize: isExtraLarge ? 18 : (isCompact ? 9 : 12),
+                  letterSpacing: 1.5,
                 ),
               ),
               Text(
                 '${game.remainingSeconds}s',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 32,
+                  fontSize: isExtraLarge ? 56 : (isCompact ? 20 : 32),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -287,31 +382,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildScoreBox(String label, String value, theme, {bool isLarge = false}) {
+  Widget _buildScoreBox(String label, String value, theme, {bool isLarge = false, bool isExtraLarge = false}) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isLarge ? 32 : 12,
-        vertical: isLarge ? 12 : 8,
+        horizontal: isExtraLarge ? 48 : (isLarge ? 24 : 12),
+        vertical: isExtraLarge ? 20 : (isLarge ? 10 : 6),
       ),
       decoration: BoxDecoration(
         color: theme.scoreTileColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
             style: TextStyle(
               color: theme.backgroundColor,
               fontWeight: FontWeight.bold,
-              fontSize: isLarge ? 14 : 10,
+              fontSize: isExtraLarge ? 18 : (isLarge ? 12 : 9),
             ),
           ),
           Text(
             value,
             style: TextStyle(
               color: Colors.white,
-              fontSize: isLarge ? 28 : 18,
+              fontSize: isExtraLarge ? 40 : (isLarge ? 22 : 16),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -327,9 +423,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Calculate the maximum possible board size based on available space
-        final maxPossibleSize = min(constraints.maxWidth, constraints.maxHeight);
-        // Add padding to ensure the board doesn't touch the edges exactly
-        final size = maxPossibleSize - 16; 
+        final size = min(constraints.maxWidth, constraints.maxHeight);
         final tileSize = (size - (gridSize + 1) * 8) / gridSize;
 
         return Consumer<GameProvider>(
@@ -378,7 +472,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               height: tileSize,
                               decoration: BoxDecoration(
                                 color: theme.emptyTileColor,
-                                borderRadius: BorderRadius.circular(8.0),
+                                borderRadius: BorderRadius.circular(4.0),
                               ),
                             ),
                           );
@@ -389,11 +483,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     Stack(
                       children: game.tiles.map((tile) {
                         final isSelected = game.firstSelectedTile?.id == tile.id;
-                        final isMovingToMerge = tile.isDeleting || tile.isMerged;
                         
                         return AnimatedPositioned(
                           key: ValueKey(tile.id),
-                          duration: const Duration(milliseconds: 100), // Snappy movement like 2048.co
+                          duration: const Duration(milliseconds: 100),
                           curve: Curves.easeInOut,
                           left: tile.y * (tileSize + 8) + 8,
                           top: tile.x * (tileSize + 8) + 8,
@@ -408,22 +501,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                   borderRadius: BorderRadius.circular(8.0),
                                 ) : null,
                                 child: tile.isDeleting 
-                                  ? TileWidget(tile: tile) // The disappearing tile
+                                  ? TileWidget(tile: tile)
                                   : tile.isMerged
                                     ? TweenAnimationBuilder<double>(
-                                        duration: const Duration(milliseconds: 200), // Quick pop
+                                        duration: const Duration(milliseconds: 200),
                                         tween: Tween(begin: 1.0, end: 1.15),
                                         curve: Curves.easeOut,
                                         builder: (context, value, child) {
-                                          // Pop and return to 1.0
                                           double scale = value;
-                                          if (value > 1.1) {
-                                            scale = 1.1 - (value - 1.1);
-                                          }
-                                          return Transform.scale(
-                                            scale: scale,
-                                            child: child,
-                                          );
+                                          if (value > 1.1) scale = 1.1 - (value - 1.1);
+                                          return Transform.scale(scale: scale, child: child);
                                         },
                                         child: TileWidget(tile: tile),
                                       )
@@ -433,10 +520,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                           tween: Tween(begin: 0.0, end: 1.0),
                                           curve: Curves.easeOut,
                                           builder: (context, value, child) {
-                                            return Transform.scale(
-                                              scale: value,
-                                              child: child,
-                                            );
+                                            return Transform.scale(scale: value, child: child);
                                           },
                                           child: TileWidget(tile: tile),
                                         )
@@ -461,7 +545,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               Text(
                                 'Game Over!',
                                 style: TextStyle(
-                                  fontSize: size * 0.12, // Responsive font size
+                                  fontSize: size * 0.12,
                                   fontWeight: FontWeight.bold,
                                   color: theme.textColor,
                                 ),
@@ -476,7 +560,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                   'Play Again',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 20, // Increased size
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -495,22 +579,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildControls(BuildContext context) {
+  Widget _buildControls(BuildContext context, {bool isCompact = false, bool isExtraLarge = false}) {
     final theme = context.watch<ThemeProvider>().currentTheme;
+    final size = isExtraLarge ? 140.0 : (isCompact ? 64.0 : 100.0);
+    final iconSize = isExtraLarge ? 48.0 : (isCompact ? 20.0 : 30.0);
+    final fontSize = isExtraLarge ? 20.0 : (isCompact ? 11.0 : 16.0);
+
     return Consumer<GameProvider>(
       builder: (context, game, child) {
         return Column(
           children: [
             if (game.isSwapMode)
               Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
+                padding: EdgeInsets.only(bottom: isExtraLarge ? 24.0 : 12.0),
                 child: Text(
                   game.firstSelectedTile == null 
-                    ? 'Select first tile to swap' 
-                    : 'Select second tile to swap',
+                    ? 'Select first tile' 
+                    : 'Select second tile',
                   style: TextStyle(
                     color: theme.textColor,
-                    fontSize: 18,
+                    fontSize: isExtraLarge ? 24 : (isCompact ? 14 : 18),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -518,94 +606,79 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: ElevatedButton(
-                    onPressed: game.canUndo ? () => game.undo() : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.scoreTileColor,
-                      padding: EdgeInsets.zero,
-                      disabledBackgroundColor: theme.scoreTileColor.withOpacity(0.3),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.undo, color: Colors.white, size: 30),
-                        SizedBox(height: 4),
-                        Text(
-                          'Undo',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
+                _buildControlButton(
+                  onPressed: game.canUndo ? () => game.undo() : null,
+                  icon: Icons.undo,
+                  label: 'Undo',
+                  theme: theme,
+                  size: size,
+                  iconSize: iconSize,
+                  fontSize: fontSize,
+                  isDisabled: !game.canUndo,
                 ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: ElevatedButton(
-                    onPressed: () => game.toggleSwapMode(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: game.isSwapMode ? Colors.orange : theme.scoreTileColor,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.swap_horiz, color: Colors.white, size: 30),
-                        const SizedBox(height: 4),
-                        Text(
-                          game.isSwapMode ? 'Cancel' : 'Swap',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
+                SizedBox(width: isExtraLarge ? 24 : 8),
+                _buildControlButton(
+                  onPressed: () => game.toggleSwapMode(),
+                  icon: Icons.swap_horiz,
+                  label: game.isSwapMode ? 'Cancel' : 'Swap',
+                  theme: theme,
+                  size: size,
+                  iconSize: iconSize,
+                  fontSize: fontSize,
+                  color: game.isSwapMode ? Colors.orange : null,
                 ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: ElevatedButton(
-                    onPressed: () => game.initGame(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.scoreTileColor,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.refresh, color: Colors.white, size: 30),
-                        SizedBox(height: 4),
-                        Text(
-                          'New',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                SizedBox(width: isExtraLarge ? 24 : 8),
+                _buildControlButton(
+                  onPressed: () => game.initGame(),
+                  icon: Icons.refresh,
+                  label: 'New',
+                  theme: theme,
+                  size: size,
+                  iconSize: iconSize,
+                  fontSize: fontSize,
                 ),
               ],
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildControlButton({
+    required VoidCallback? onPressed,
+    required IconData icon,
+    required String label,
+    required dynamic theme,
+    required double size,
+    required double iconSize,
+    required double fontSize,
+    bool isDisabled = false,
+    Color? color,
+  }) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color ?? theme.scoreTileColor,
+          padding: EdgeInsets.zero,
+          disabledBackgroundColor: theme.scoreTileColor.withOpacity(0.3),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: iconSize),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: fontSize),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
