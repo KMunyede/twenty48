@@ -10,6 +10,7 @@ class GameProvider extends ChangeNotifier {
   static const int gridSize = 4;
   List<Tile> _tiles = [];
   int _score = 0;
+  int _highScore = 0;
   bool _isGameOver = false;
 
   // Timer Challenge State
@@ -34,6 +35,7 @@ class GameProvider extends ChangeNotifier {
 
   List<Tile> get tiles => _tiles;
   int get score => _score;
+  int get highScore => _highScore;
   bool get isGameOver => _isGameOver;
   bool get canUndo => _tilesHistory.isNotEmpty;
   bool get isSwapMode => _isSwapMode;
@@ -53,12 +55,14 @@ class GameProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _isTimerMode = prefs.getBool('isTimerMode') ?? false;
     _targetValue = prefs.getInt('targetValue') ?? 1024;
+    _highScore = prefs.getInt('highScore') ?? 0;
   }
 
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isTimerMode', _isTimerMode);
     await prefs.setInt('targetValue', _targetValue);
+    await prefs.setInt('highScore', _highScore);
   }
 
   void startTimerChallenge(int target) {
@@ -254,18 +258,29 @@ class GameProvider extends ChangeNotifier {
             }
           }
 
+          if (_score > _highScore) {
+            _highScore = _score;
+            _saveSettings();
+          }
+
           // Check for celebration (1024, 2048, 4096, 8192)
           if (val >= 1024 && [1024, 2048, 4096, 8192].contains(val)) {
             _shouldCelebrate = true;
             _celebrationId++;
           }
 
-          // Important: Keep the ID of the 'leading' tile for smooth animation
+          // First tile stays and becomes the new merged tile
           mergedLine.add(line[j].copyWith(
             value: val,
             isMerged: true,
           ));
-          j++; // Skip the next tile as it was merged
+          
+          // Second tile is marked as deleting but moves to the same target position
+          mergedLine.add(line[j + 1].copyWith(
+            isDeleting: true,
+          ));
+          
+          j++; // Skip the next tile as it was processed
           moved = true;
         } else {
           mergedLine.add(line[j]);
@@ -273,8 +288,9 @@ class GameProvider extends ChangeNotifier {
       }
 
       // 4. Assign new positions within the line
+      int targetOffset = 0;
       for (int j = 0; j < mergedLine.length; j++) {
-        int targetIndex = (dx > 0 || dy > 0) ? (gridSize - 1 - j) : j;
+        int targetIndex = (dx > 0 || dy > 0) ? (gridSize - 1 - targetOffset) : targetOffset;
         int nx = dx == 0 ? i : targetIndex;
         int ny = dy == 0 ? i : targetIndex;
 
@@ -282,15 +298,23 @@ class GameProvider extends ChangeNotifier {
           moved = true;
         }
         nextTiles.add(mergedLine[j].copyWith(x: nx, y: ny));
+        
+        // Only increment the target offset if the tile is NOT deleting
+        // (Deleting tiles move to the same position as their merge partner)
+        if (!mergedLine[j].isDeleting) {
+          targetOffset++;
+        }
       }
     }
 
     if (moved) {
-      // Move was successful, commit state to history
+      // Logic for 2048.co style animation:
+      // Non-merging tiles move instantly to their target.
+      // Merging tiles move to the same target, then one disappears and the other "pops".
+      
       _tilesHistory.add(currentTiles);
       _scoreHistory.add(currentScore);
       _timerHistory.add(currentTimer);
-      // Limit history to last 10 moves to save memory
       if (_tilesHistory.length > 10) {
         _tilesHistory.removeAt(0);
         _scoreHistory.removeAt(0);
@@ -299,19 +323,19 @@ class GameProvider extends ChangeNotifier {
 
       _tiles = nextTiles;
       _remainingSeconds += bonusTime;
-      _lastBonusTime = bonusTime; // Set last bonus time for UI
+      _lastBonusTime = bonusTime; 
       _addNewTile();
       _isGameOver = _isGameOver || _calculateGameOver();
       notifyListeners();
       
-      // Reset flags after a short delay so UI can pick them up
-      if (_lastBonusTime > 0 || _shouldCelebrate) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _lastBonusTime = 0;
-          _shouldCelebrate = false;
-          notifyListeners();
-        });
-      }
+      // Clean up deleting tiles after animation finishes
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _tiles.removeWhere((t) => t.isDeleting);
+        _tiles = _tiles.map((t) => t.copyWith(isMerged: false, isNew: false)).toList();
+        _lastBonusTime = 0;
+        _shouldCelebrate = false;
+        notifyListeners();
+      });
     }
   }
 

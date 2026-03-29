@@ -117,7 +117,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: Column(
                   children: [
                     _buildHeader(context),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+                    if (game.isTimerMode) ...[
+                      _buildTimer(context, game),
+                      const SizedBox(height: 24),
+                    ],
                     Expanded(
                       child: Center(
                         child: AnimatedBuilder(
@@ -168,125 +172,151 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return Consumer<GameProvider>(
       builder: (context, game, child) {
-        return Stack(
-          alignment: Alignment.center,
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '2048',
-                  style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: theme.textColor,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: theme.scoreTileColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'SCORE',
-                        style: TextStyle(
-                          color: theme.backgroundColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${game.score}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            _buildScoreBox(
+              'SCORE',
+              '${game.score}',
+              theme,
+              isLarge: true,
             ),
-            if (game.isTimerMode)
-              AnimatedBuilder(
-                animation: _timerAnimationController,
-                builder: (context, child) {
-                  Color baseColor;
-                  bool shouldFlash;
-
-                  if (game.remainingSeconds >= 200) {
-                    baseColor = Colors.green;
-                    shouldFlash = false;
-                  } else if (game.remainingSeconds >= 100) {
-                    baseColor = Colors.yellow[700]!; // Darker yellow for better contrast
-                    shouldFlash = false;
-                  } else if (game.remainingSeconds >= 30) {
-                    baseColor = Colors.orange;
-                    shouldFlash = true;
-                  } else {
-                    baseColor = Colors.red;
-                    shouldFlash = true;
-                  }
-
-                  final displayColor = shouldFlash
-                      ? Color.lerp(
-                          baseColor.withOpacity(0.5),
-                          baseColor.withOpacity(1.0),
-                          _timerAnimationController.value,
-                        )
-                      : baseColor;
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: displayColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+            const SizedBox(width: 16),
+            _buildScoreBox(
+              'BEST',
+              '${game.highScore}',
+              theme,
+              isLarge: true,
+            ),
+            if (game.isTimerMode) ...[
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TARGET',
+                    style: TextStyle(
+                      color: theme.textColor.withOpacity(0.7),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Time Challenge Mode',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Time Remaining:',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Text(
-                          '${game.remainingSeconds}s',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                  ),
+                  Text(
+                    '${game.targetValue}',
+                    style: TextStyle(
+                      color: theme.textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
+            ],
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTimer(BuildContext context, GameProvider game) {
+    return AnimatedBuilder(
+      animation: _timerAnimationController,
+      builder: (context, child) {
+        Color baseColor;
+        bool shouldFlash;
+
+        if (game.remainingSeconds >= 200) {
+          baseColor = Colors.green;
+          shouldFlash = false;
+        } else if (game.remainingSeconds >= 100) {
+          baseColor = Colors.yellow[700]!;
+          shouldFlash = false;
+        } else if (game.remainingSeconds >= 30) {
+          baseColor = Colors.orange;
+          shouldFlash = true;
+        } else {
+          baseColor = Colors.red;
+          shouldFlash = true;
+        }
+
+        final displayColor = (shouldFlash
+            ? Color.lerp(
+                baseColor.withOpacity(0.5),
+                baseColor.withOpacity(1.0),
+                _timerAnimationController.value,
+              )
+            : baseColor) ?? baseColor;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          decoration: BoxDecoration(
+            color: displayColor,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: displayColor.withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'TIME REMAINING',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              Text(
+                '${game.remainingSeconds}s',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildScoreBox(String label, String value, theme, {bool isLarge = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isLarge ? 32 : 12,
+        vertical: isLarge ? 12 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: theme.scoreTileColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: theme.backgroundColor,
+              fontWeight: FontWeight.bold,
+              fontSize: isLarge ? 14 : 10,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isLarge ? 28 : 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -350,10 +380,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     Stack(
                       children: game.tiles.map((tile) {
                         final isSelected = game.firstSelectedTile?.id == tile.id;
+                        final isMovingToMerge = tile.isDeleting || tile.isMerged;
+                        
                         return AnimatedPositioned(
                           key: ValueKey(tile.id),
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.easeOutCubic,
+                          duration: const Duration(milliseconds: 100), // Snappy movement like 2048.co
+                          curve: Curves.easeInOut,
                           left: tile.y * (tileSize + 8) + 8,
                           top: tile.x * (tileSize + 8) + 8,
                           child: GestureDetector(
@@ -366,19 +398,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                   border: Border.all(color: Colors.white, width: 4),
                                   borderRadius: BorderRadius.circular(8.0),
                                 ) : null,
-                                child: tile.isNew 
-                                  ? TweenAnimationBuilder<double>(
-                                      duration: const Duration(milliseconds: 500),
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      builder: (context, value, child) {
-                                        return Transform.scale(
-                                          scale: value,
-                                          child: child,
-                                        );
-                                      },
-                                      child: TileWidget(tile: tile),
-                                    )
-                                  : TileWidget(tile: tile),
+                                child: tile.isDeleting 
+                                  ? TileWidget(tile: tile) // The disappearing tile
+                                  : tile.isMerged
+                                    ? TweenAnimationBuilder<double>(
+                                        duration: const Duration(milliseconds: 200), // Quick pop
+                                        tween: Tween(begin: 1.0, end: 1.15),
+                                        curve: Curves.easeOut,
+                                        builder: (context, value, child) {
+                                          // Pop and return to 1.0
+                                          double scale = value;
+                                          if (value > 1.1) {
+                                            scale = 1.1 - (value - 1.1);
+                                          }
+                                          return Transform.scale(
+                                            scale: scale,
+                                            child: child,
+                                          );
+                                        },
+                                        child: TileWidget(tile: tile),
+                                      )
+                                    : tile.isNew 
+                                      ? TweenAnimationBuilder<double>(
+                                          duration: const Duration(milliseconds: 200),
+                                          tween: Tween(begin: 0.0, end: 1.0),
+                                          curve: Curves.easeOut,
+                                          builder: (context, value, child) {
+                                            return Transform.scale(
+                                              scale: value,
+                                              child: child,
+                                            );
+                                          },
+                                          child: TileWidget(tile: tile),
+                                        )
+                                      : TileWidget(tile: tile),
                               ),
                             ),
                           ),
@@ -456,54 +509,86 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton(
-                  onPressed: game.canUndo ? () => game.undo() : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.scoreTileColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                    disabledBackgroundColor: theme.scoreTileColor.withOpacity(0.3),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.undo, color: Colors.white, size: 20),
-                      SizedBox(width: 4),
-                      Text(
-                        'Undo',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: ElevatedButton(
+                    onPressed: game.canUndo ? () => game.undo() : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.scoreTileColor,
+                      padding: EdgeInsets.zero,
+                      disabledBackgroundColor: theme.scoreTileColor.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.undo, color: Colors.white, size: 30),
+                        SizedBox(height: 4),
+                        Text(
+                          'Undo',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => game.toggleSwapMode(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: game.isSwapMode ? Colors.orange : theme.scoreTileColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.swap_horiz, color: Colors.white, size: 20),
-                      const SizedBox(width: 4),
-                      Text(
-                        game.isSwapMode ? 'Cancel' : 'Swap Tiles',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: ElevatedButton(
+                    onPressed: () => game.toggleSwapMode(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: game.isSwapMode ? Colors.orange : theme.scoreTileColor,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.swap_horiz, color: Colors.white, size: 30),
+                        const SizedBox(height: 4),
+                        Text(
+                          game.isSwapMode ? 'Cancel' : 'Swap',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => game.initGame(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.scoreTileColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                  ),
-                  child: const Text(
-                    'New Game',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: ElevatedButton(
+                    onPressed: () => game.initGame(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.scoreTileColor,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.refresh, color: Colors.white, size: 30),
+                        SizedBox(height: 4),
+                        Text(
+                          'New',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

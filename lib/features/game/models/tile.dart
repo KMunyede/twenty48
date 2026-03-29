@@ -9,6 +9,7 @@ class Tile {
   final int value;
   final bool isMerged;
   final bool isNew;
+  final bool isDeleting;
 
   Tile({
     String? id,
@@ -17,6 +18,7 @@ class Tile {
     required this.value,
     this.isMerged = false,
     this.isNew = false,
+    this.isDeleting = false,
   }) : id = id ?? const Uuid().v4();
 
   Tile copyWith({
@@ -25,6 +27,7 @@ class Tile {
     int? value,
     bool? isMerged,
     bool? isNew,
+    bool? isDeleting,
   }) {
     return Tile(
       id: id,
@@ -33,6 +36,7 @@ class Tile {
       value: value ?? this.value,
       isMerged: isMerged ?? this.isMerged,
       isNew: isNew ?? this.isNew,
+      isDeleting: isDeleting ?? this.isDeleting,
     );
   }
 }
