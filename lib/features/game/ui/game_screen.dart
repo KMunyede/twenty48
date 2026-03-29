@@ -334,16 +334,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
         return Consumer<GameProvider>(
           builder: (context, game, child) {
+            double dragStartX = 0;
+            double dragStartY = 0;
+
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onPanEnd: (details) {
-                final velocity = details.velocity.pixelsPerSecond;
-                if (velocity.dx.abs() > velocity.dy.abs()) {
-                  if (velocity.dx < -500) game.moveLeft();
-                  else if (velocity.dx > 500) game.moveRight();
-                } else {
-                  if (velocity.dy < -500) game.moveUp();
-                  else if (velocity.dy > 500) game.moveDown();
+              onVerticalDragStart: (details) => dragStartY = details.localPosition.dy,
+              onHorizontalDragStart: (details) => dragStartX = details.localPosition.dx,
+              onVerticalDragEnd: (details) {
+                final double delta = details.localPosition.dy - dragStartY;
+                if (delta.abs() > 40) {
+                  if (delta < 0) game.moveUp();
+                  else game.moveDown();
+                }
+              },
+              onHorizontalDragEnd: (details) {
+                final double delta = details.localPosition.dx - dragStartX;
+                if (delta.abs() > 40) {
+                  if (delta < 0) game.moveLeft();
+                  else game.moveRight();
                 }
               },
               child: SizedBox(
