@@ -22,6 +22,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late AnimationController _timerAnimationController;
   late ConfettiController _confettiController;
   late AnimationController _shakeController;
+  bool _isMoving = false;
+  double _totalDx = 0;
+  double _totalDy = 0;
 
   @override
   void initState() {
@@ -37,6 +40,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
+
+    // Request focus after first frame to enable keyboard input
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_focusNode.canRequestFocus) {
+        _focusNode.requestFocus();
+      }
+    });
   }
 
   @override
@@ -48,79 +58,80 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _onGameUpdate() {
-    final game = context.read<GameProvider>();
-    if (game.shouldCelebrate) {
-      _confettiController.play();
-      _shakeController.forward(from: 0.0);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
-    final game = context.watch<GameProvider>(); // Switch to watch to react to celebration flags
-
-    // Ensure we request focus whenever the screen is built to catch keyboard events
-    if (!_focusNode.hasFocus) {
-      _focusNode.requestFocus();
-    }
+    final game = context.watch<GameProvider>();
 
     // Trigger animations if needed
     if (game.shouldCelebrate && _shakeController.status != AnimationStatus.forward) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _confettiController.play();
-        _shakeController.forward(from: 0.0);
+        if (mounted) {
+          _confettiController.play();
+          _shakeController.forward(from: 0.0);
+        }
       });
     }
 
     return Focus(
       focusNode: _focusNode,
+      autofocus: true,
       onKeyEvent: (FocusNode node, KeyEvent event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-            game.moveUp();
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-            game.moveDown();
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-            game.moveLeft();
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-            game.moveRight();
+        if (event is KeyDownEvent || event is KeyRepeatEvent) {
+          final key = event.logicalKey;
+          bool moved = false;
+          bool isGameKey = true;
+
+          if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.keyW) {
+            moved = game.moveUp();
+          } else if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.keyS) {
+            moved = game.moveDown();
+          } else if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.keyA) {
+            moved = game.moveLeft();
+          } else if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.keyD) {
+            moved = game.moveRight();
+          } else {
+            isGameKey = false;
+          }
+
+          if (isGameKey) {
+            if (moved) HapticFeedback.lightImpact();
             return KeyEventResult.handled;
           }
         }
         return KeyEventResult.ignored;
       },
-      child: Scaffold(
-        backgroundColor: theme.backgroundColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          toolbarHeight: 48,
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings, color: theme.textColor),
-              onPressed: () => showDialog(
-                context: context,
-                builder: (context) => const SettingsDialog(),
+      child: GestureDetector(
+        onTap: () {
+          _focusNode.requestFocus();
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Scaffold(
+          backgroundColor: theme.backgroundColor,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            toolbarHeight: 48,
+            actions: [
+              IconButton(
+                icon: Icon(Icons.settings, color: theme.textColor),
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (context) => const SettingsDialog(),
+                ),
               ),
+            ],
+          ),
+          body: SafeArea(
+            child: OrientationBuilder(
+              builder: (context, orientation) {
+                final bool isLandscape = orientation == Orientation.landscape;
+                if (isLandscape) {
+                  return _buildLandscapeLayout(context, game);
+                }
+                return _buildPortraitLayout(context, game);
+              },
             ),
-          ],
-        ),
-        body: SafeArea(
-          child: OrientationBuilder(
-            builder: (context, orientation) {
-              final bool isLandscape = orientation == Orientation.landscape;
-              
-              if (isLandscape) {
-                return _buildLandscapeLayout(context, game);
-              }
-              
-              return _buildPortraitLayout(context, game);
-            },
           ),
         ),
       ),
@@ -164,40 +175,59 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: isLargeScreen ? 64.0 : 16.0,
-            vertical: isLargeScreen ? 32.0 : 16.0,
+            horizontal: isLargeScreen ? 32.0 : 16.0,
+            vertical: isLargeScreen ? 16.0 : 8.0,
           ),
           child: Row(
             children: [
-              // Left Column: Scores, Timer, Controls
               Expanded(
-                flex: isLargeScreen ? 1 : 2,
+                flex: isLargeScreen ? 2 : 3,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildHeader(context, isCompact: !isLargeScreen, isExtraLarge: isLargeScreen),
+                      _buildHeader(
+                        context, 
+                        isCompact: !isLargeScreen, 
+                        isExtraLarge: isLargeScreen,
+                        isVertical: true,
+                      ),
                       if (game.isTimerMode) ...[
-                        const SizedBox(height: 24),
-                        _buildTimer(context, game, isCompact: !isLargeScreen, isExtraLarge: isLargeScreen),
+                        SizedBox(height: isLargeScreen ? 32 : 16),
+                        _buildTimer(
+                          context, 
+                          game, 
+                          isCompact: !isLargeScreen, 
+                          isExtraLarge: isLargeScreen,
+                        ),
                       ],
-                      const SizedBox(height: 40),
-                      _buildControls(context, isCompact: !isLargeScreen, isExtraLarge: isLargeScreen),
                     ],
                   ),
                 ),
               ),
-              SizedBox(width: isLargeScreen ? 64 : 24),
-              // Right Column: Game Board
               Expanded(
-                flex: isLargeScreen ? 1 : 3,
+                flex: isLargeScreen ? 5 : 6,
                 child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: isLargeScreen ? 600 : double.infinity,
-                      maxHeight: isLargeScreen ? 600 : double.infinity,
+                  child: AspectRatio(
+                    aspectRatio: 1.0,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: isLargeScreen ? 600 : double.infinity,
+                        maxHeight: isLargeScreen ? 600 : double.infinity,
+                      ),
+                      child: _buildAnimatedGameBoard(),
                     ),
-                    child: _buildAnimatedGameBoard(),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: isLargeScreen ? 2 : 3,
+                child: SingleChildScrollView(
+                  child: _buildControls(
+                    context, 
+                    isCompact: !isLargeScreen, 
+                    isExtraLarge: isLargeScreen,
+                    isVertical: true,
                   ),
                 ),
               ),
@@ -225,12 +255,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget _buildOverlays(GameProvider game) {
     return Stack(
       children: [
-        // Confetti Overlay
         Align(
           alignment: Alignment.topCenter,
           child: ConfettiWidget(
             confettiController: _confettiController,
-            blastDirection: pi / 2, // downwards
+            blastDirection: pi / 2,
             maxBlastForce: 5,
             minBlastForce: 2,
             emissionFrequency: 0.05,
@@ -238,7 +267,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             gravity: 0.1,
           ),
         ),
-        // Floating Bonus Time
         if (game.lastBonusTime > 0)
           Positioned(
             top: 100,
@@ -249,62 +277,74 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {bool isCompact = false, bool isExtraLarge = false}) {
+  Widget _buildHeader(BuildContext context, {bool isCompact = false, bool isExtraLarge = false, bool isVertical = false}) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return Consumer<GameProvider>(
       builder: (context, game, child) {
+        final children = [
+          _buildScoreBox(
+            'SCORE',
+            '${game.score}',
+            theme,
+            isLarge: !isCompact || isExtraLarge,
+            isExtraLarge: isExtraLarge,
+          ),
+          if (isVertical) SizedBox(height: isExtraLarge ? 24 : 12),
+          _buildScoreBox(
+            'BEST',
+            '${game.highScore}',
+            theme,
+            isLarge: !isCompact || isExtraLarge,
+            isExtraLarge: isExtraLarge,
+          ),
+          if (game.isTimerMode) ...[
+            if (isVertical) SizedBox(height: isExtraLarge ? 24 : 12),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isExtraLarge ? 24 : 12, 
+                vertical: isExtraLarge ? 16 : (isCompact ? 4 : 8)
+              ),
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.textColor.withValues(alpha: 0.3), width: isExtraLarge ? 2 : 1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'TARGET',
+                    style: TextStyle(
+                      color: theme.textColor.withValues(alpha: 0.7),
+                      fontWeight: FontWeight.bold,
+                      fontSize: isExtraLarge ? 16 : (isCompact ? 9 : 12),
+                    ),
+                  ),
+                  Text(
+                    '${game.targetValue}',
+                    style: TextStyle(
+                      color: theme.textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isExtraLarge ? 32 : (isCompact ? 14 : 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ];
+
+        if (isVertical) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: children,
+          );
+        }
+
         return Wrap(
           alignment: WrapAlignment.center,
           spacing: isExtraLarge ? 24 : (isCompact ? 8 : 16),
           runSpacing: 12,
-          children: [
-            _buildScoreBox(
-              'SCORE',
-              '${game.score}',
-              theme,
-              isLarge: !isCompact || isExtraLarge,
-              isExtraLarge: isExtraLarge,
-            ),
-            _buildScoreBox(
-              'BEST',
-              '${game.highScore}',
-              theme,
-              isLarge: !isCompact || isExtraLarge,
-              isExtraLarge: isExtraLarge,
-            ),
-            if (game.isTimerMode)
-              Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isExtraLarge ? 24 : 12, 
-                  vertical: isExtraLarge ? 16 : (isCompact ? 4 : 8)
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.textColor.withOpacity(0.3), width: isExtraLarge ? 2 : 1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'TARGET',
-                      style: TextStyle(
-                        color: theme.textColor.withOpacity(0.7),
-                        fontWeight: FontWeight.bold,
-                        fontSize: isExtraLarge ? 16 : (isCompact ? 9 : 12),
-                      ),
-                    ),
-                    Text(
-                      '${game.targetValue}',
-                      style: TextStyle(
-                        color: theme.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isExtraLarge ? 32 : (isCompact ? 14 : 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+          children: children,
         );
       },
     );
@@ -333,8 +373,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
         final displayColor = (shouldFlash
             ? Color.lerp(
-                baseColor.withOpacity(0.5),
-                baseColor.withOpacity(1.0),
+                baseColor.withValues(alpha: 0.5),
+                baseColor.withValues(alpha: 1.0),
                 _timerAnimationController.value,
               )
             : baseColor) ?? baseColor;
@@ -349,7 +389,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: displayColor.withOpacity(0.3),
+                color: displayColor.withValues(alpha: 0.3),
                 blurRadius: isExtraLarge ? 16 : 8,
                 spreadRadius: isExtraLarge ? 4 : 2,
               ),
@@ -422,39 +462,49 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate the maximum possible board size based on available space
         final size = min(constraints.maxWidth, constraints.maxHeight);
         final tileSize = (size - (gridSize + 1) * 8) / gridSize;
 
         return Consumer<GameProvider>(
           builder: (context, game, child) {
-            double dragStartX = 0;
-            double dragStartY = 0;
-
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onVerticalDragStart: (details) => dragStartY = details.localPosition.dy,
-              onHorizontalDragStart: (details) => dragStartX = details.localPosition.dx,
-              onVerticalDragEnd: (details) {
-                final double delta = details.localPosition.dy - dragStartY;
-                if (delta.abs() > 40) {
-                  if (delta < 0) game.moveUp();
-                  else game.moveDown();
+              onPanStart: (_) {
+                _totalDx = 0;
+                _totalDy = 0;
+                _isMoving = false;
+              },
+              onPanUpdate: (details) {
+                if (game.isSwapMode || _isMoving) return;
+                _totalDx += details.delta.dx;
+                _totalDy += details.delta.dy;
+
+                const double threshold = 30;
+                if (_totalDx.abs() > threshold || _totalDy.abs() > threshold) {
+                  _isMoving = true;
+                  bool moved = false;
+                  if (_totalDx.abs() > _totalDy.abs()) {
+                    if (_totalDx > 0) {
+                      moved = game.moveRight();
+                    } else {
+                      moved = game.moveLeft();
+                    }
+                  } else {
+                    if (_totalDy > 0) {
+                      moved = game.moveDown();
+                    } else {
+                      moved = game.moveUp();
+                    }
+                  }
+                  if (moved) HapticFeedback.lightImpact();
                 }
               },
-              onHorizontalDragEnd: (details) {
-                final double delta = details.localPosition.dx - dragStartX;
-                if (delta.abs() > 40) {
-                  if (delta < 0) game.moveLeft();
-                  else game.moveRight();
-                }
-              },
+              onPanEnd: (_) => _isMoving = false,
               child: SizedBox(
                 width: size,
                 height: size,
                 child: Stack(
                   children: [
-                    // Background Grid
                     Container(
                       decoration: BoxDecoration(
                         color: theme.boardColor,
@@ -479,63 +529,68 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         }),
                       ),
                     ),
-                    // Active Tiles
                     Stack(
                       children: game.tiles.map((tile) {
                         final isSelected = game.firstSelectedTile?.id == tile.id;
+                        final tileWidget = TileWidget(tile: tile);
                         
+                        Widget animatedTile = tileWidget;
+
+                        if (tile.isMerged) {
+                          animatedTile = TweenAnimationBuilder<double>(
+                            duration: const Duration(milliseconds: 100),
+                            tween: Tween(begin: 1.0, end: 1.15),
+                            curve: Curves.easeOut,
+                            builder: (context, value, child) {
+                              return Transform.scale(
+                                scale: value > 1.075 ? 2.15 - value : value,
+                                child: child,
+                              );
+                            },
+                            child: tileWidget,
+                          );
+                        } else if (tile.isNew) {
+                          animatedTile = TweenAnimationBuilder<double>(
+                            duration: const Duration(milliseconds: 200),
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            curve: Curves.easeOut,
+                            builder: (context, value, child) {
+                              return Transform.scale(scale: value, child: child);
+                            },
+                            child: tileWidget,
+                          );
+                        }
+
                         return AnimatedPositioned(
                           key: ValueKey(tile.id),
                           duration: const Duration(milliseconds: 100),
                           curve: Curves.easeInOut,
                           left: tile.y * (tileSize + 8) + 8,
                           top: tile.x * (tileSize + 8) + 8,
-                          child: GestureDetector(
-                            onTap: game.isSwapMode ? () => game.selectTileForSwap(tile) : null,
-                            child: SizedBox(
-                              width: tileSize,
-                              height: tileSize,
-                              child: Container(
-                                decoration: isSelected ? BoxDecoration(
-                                  border: Border.all(color: Colors.white, width: 4),
-                                  borderRadius: BorderRadius.circular(8.0),
-                                ) : null,
-                                child: tile.isDeleting 
-                                  ? TileWidget(tile: tile)
-                                  : tile.isMerged
-                                    ? TweenAnimationBuilder<double>(
-                                        duration: const Duration(milliseconds: 200),
-                                        tween: Tween(begin: 1.0, end: 1.15),
-                                        curve: Curves.easeOut,
-                                        builder: (context, value, child) {
-                                          double scale = value;
-                                          if (value > 1.1) scale = 1.1 - (value - 1.1);
-                                          return Transform.scale(scale: scale, child: child);
-                                        },
-                                        child: TileWidget(tile: tile),
-                                      )
-                                    : tile.isNew 
-                                      ? TweenAnimationBuilder<double>(
-                                          duration: const Duration(milliseconds: 200),
-                                          tween: Tween(begin: 0.0, end: 1.0),
-                                          curve: Curves.easeOut,
-                                          builder: (context, value, child) {
-                                            return Transform.scale(scale: value, child: child);
-                                          },
-                                          child: TileWidget(tile: tile),
-                                        )
-                                      : TileWidget(tile: tile),
-                              ),
-                            ),
+                          child: SizedBox(
+                            width: tileSize,
+                            height: tileSize,
+                            child: game.isSwapMode 
+                              ? GestureDetector(
+                                  onTap: () => game.selectTileForSwap(tile),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Container(
+                                    decoration: isSelected ? BoxDecoration(
+                                      border: Border.all(color: Colors.white, width: 4),
+                                      borderRadius: BorderRadius.circular(8.0),
+                                    ) : null,
+                                    child: animatedTile,
+                                  ),
+                                )
+                              : animatedTile,
                           ),
                         );
                       }).toList(),
                     ),
-                    // Game Over Overlay
                     if (game.isGameOver)
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: Center(
@@ -579,7 +634,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildControls(BuildContext context, {bool isCompact = false, bool isExtraLarge = false}) {
+  Widget _buildControls(BuildContext context, {bool isCompact = false, bool isExtraLarge = false, bool isVertical = false}) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     final size = isExtraLarge ? 140.0 : (isCompact ? 64.0 : 100.0);
     final iconSize = isExtraLarge ? 48.0 : (isCompact ? 20.0 : 30.0);
@@ -587,6 +642,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     return Consumer<GameProvider>(
       builder: (context, game, child) {
+        final buttons = [
+          _buildControlButton(
+            onPressed: game.canUndo ? () => game.undo() : null,
+            icon: Icons.undo,
+            label: 'Undo',
+            theme: theme,
+            size: size,
+            iconSize: iconSize,
+            fontSize: fontSize,
+            isDisabled: !game.canUndo,
+          ),
+          if (!isVertical) SizedBox(width: isExtraLarge ? 24 : 8) else SizedBox(height: isExtraLarge ? 24 : 12),
+          _buildControlButton(
+            onPressed: () => game.toggleSwapMode(),
+            icon: Icons.swap_horiz,
+            label: game.isSwapMode ? 'Cancel' : 'Swap',
+            theme: theme,
+            size: size,
+            iconSize: iconSize,
+            fontSize: fontSize,
+            color: game.isSwapMode ? Colors.orange : null,
+          ),
+          if (!isVertical) SizedBox(width: isExtraLarge ? 24 : 8) else SizedBox(height: isExtraLarge ? 24 : 12),
+          _buildControlButton(
+            onPressed: () => game.initGame(),
+            icon: Icons.refresh,
+            label: 'New',
+            theme: theme,
+            size: size,
+            iconSize: iconSize,
+            fontSize: fontSize,
+          ),
+        ];
+
         return Column(
           children: [
             if (game.isSwapMode)
@@ -603,42 +692,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildControlButton(
-                  onPressed: game.canUndo ? () => game.undo() : null,
-                  icon: Icons.undo,
-                  label: 'Undo',
-                  theme: theme,
-                  size: size,
-                  iconSize: iconSize,
-                  fontSize: fontSize,
-                  isDisabled: !game.canUndo,
-                ),
-                SizedBox(width: isExtraLarge ? 24 : 8),
-                _buildControlButton(
-                  onPressed: () => game.toggleSwapMode(),
-                  icon: Icons.swap_horiz,
-                  label: game.isSwapMode ? 'Cancel' : 'Swap',
-                  theme: theme,
-                  size: size,
-                  iconSize: iconSize,
-                  fontSize: fontSize,
-                  color: game.isSwapMode ? Colors.orange : null,
-                ),
-                SizedBox(width: isExtraLarge ? 24 : 8),
-                _buildControlButton(
-                  onPressed: () => game.initGame(),
-                  icon: Icons.refresh,
-                  label: 'New',
-                  theme: theme,
-                  size: size,
-                  iconSize: iconSize,
-                  fontSize: fontSize,
-                ),
-              ],
-            ),
+            if (isVertical) 
+              Column(children: buttons)
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: buttons,
+              ),
           ],
         );
       },
@@ -660,11 +720,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       width: size,
       height: size,
       child: ElevatedButton(
+        focusNode: FocusNode(skipTraversal: true),
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color ?? theme.scoreTileColor,
           padding: EdgeInsets.zero,
-          disabledBackgroundColor: theme.scoreTileColor.withOpacity(0.3),
+          disabledBackgroundColor: theme.scoreTileColor.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Column(
