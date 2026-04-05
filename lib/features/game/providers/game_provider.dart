@@ -196,10 +196,10 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
-  void moveLeft() => _move(0, -1);
-  void moveRight() => _move(0, 1);
-  void moveUp() => _move(-1, 0);
-  void moveDown() => _move(1, 0);
+  bool moveLeft() => _move(0, -1);
+  bool moveRight() => _move(0, 1);
+  bool moveUp() => _move(-1, 0);
+  bool moveDown() => _move(1, 0);
 
   void undo() {
     if (!canUndo) return;
@@ -211,8 +211,8 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _move(int dx, int dy) {
-    if (_isGameOver || _isSwapMode) return; // Disable moves while swapping
+  bool _move(int dx, int dy) {
+    if (_isGameOver || _isSwapMode) return false; // Disable moves while swapping
 
     // Save current state for undo
     final currentTiles = _tiles.map((t) => t.copyWith()).toList();
@@ -247,11 +247,11 @@ class GameProvider extends ChangeNotifier {
           _score += val;
           
           if (_isTimerMode) {
-            if (val == 64) bonusTime += 10;
-            else if (val == 128) bonusTime += 15;
-            else if (val == 256) bonusTime += 20;
-            else if (val == 512) bonusTime += 30;
-            else if (val >= 1024) bonusTime += 40;
+            if (val == 64) {bonusTime += 10;}
+            else if (val == 128) {bonusTime += 15;}
+            else if (val == 256) {bonusTime += 20;}
+            else if (val == 512) {bonusTime += 30;}
+            else if (val >= 1024) {bonusTime += 40;}
 
             if (val >= _targetValue) {
               _isGameOver = true; // Win condition in timer mode
@@ -299,9 +299,15 @@ class GameProvider extends ChangeNotifier {
         }
         nextTiles.add(mergedLine[j].copyWith(x: nx, y: ny));
         
-        // Only increment the target offset if the tile is NOT deleting
-        // (Deleting tiles move to the same position as their merge partner)
-        if (!mergedLine[j].isDeleting) {
+        // Logical fix: If the next tile is deleting, it belongs to this merge
+        // and should use the SAME targetOffset. If the current tile is deleting,
+        // it means we just finished a merge pair and should increment.
+        if (j + 1 < mergedLine.length && mergedLine[j+1].isDeleting) {
+          // Stay at current targetOffset for the partner
+        } else if (mergedLine[j].isDeleting) {
+          targetOffset++;
+        } else if (!mergedLine[j].isDeleting) {
+          // Single tile, move to next
           targetOffset++;
         }
       }
@@ -329,14 +335,17 @@ class GameProvider extends ChangeNotifier {
       notifyListeners();
       
       // Clean up deleting tiles after animation finishes
-      Future.delayed(const Duration(milliseconds: 100), () {
+      // Increased to 250ms to allow "pop" animations to complete
+      Future.delayed(const Duration(milliseconds: 250), () {
         _tiles.removeWhere((t) => t.isDeleting);
         _tiles = _tiles.map((t) => t.copyWith(isMerged: false, isNew: false)).toList();
         _lastBonusTime = 0;
         _shouldCelebrate = false;
         notifyListeners();
       });
+      return true;
     }
+    return false;
   }
 
   bool _calculateGameOver() {

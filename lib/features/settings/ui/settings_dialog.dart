@@ -85,26 +85,30 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           const Divider(),
                           Text('Choose Color Theme:', style: TextStyle(fontWeight: FontWeight.bold, color: theme.textColor)),
                           const SizedBox(height: 8),
-                          ...AppTheme.themes.map((appTheme) {
-                            return RadioListTile<AppTheme>(
-                              title: Text(appTheme.name, style: TextStyle(color: theme.textColor)),
-                              value: appTheme,
-                              groupValue: theme,
-                              onChanged: (value) {
-                                if (value != null) {
-                                  context.read<ThemeProvider>().setTheme(value);
-                                }
-                              },
-                              secondary: Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: appTheme.boardColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                          RadioGroup<AppTheme>(
+                            groupValue: theme,
+                            onChanged: (value) {
+                              if (value != null) {
+                                context.read<ThemeProvider>().setTheme(value);
+                              }
+                            },
+                            child: Column(
+                              children: AppTheme.themes.map((appTheme) {
+                                return RadioListTile<AppTheme>(
+                                  title: Text(appTheme.name, style: TextStyle(color: theme.textColor)),
+                                  value: appTheme,
+                                  secondary: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: appTheme.boardColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -130,7 +134,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return ListTile(
       title: Text(title, style: TextStyle(color: theme.textColor)),
-      subtitle: Text(subtitle, style: TextStyle(color: theme.textColor.withOpacity(0.7))),
+      subtitle: Text(subtitle, style: TextStyle(color: theme.textColor.withValues(alpha: 0.7))),
       onTap: () {
         onTap();
         Navigator.of(context).pop();

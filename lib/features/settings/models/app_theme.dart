@@ -54,11 +54,11 @@ class AppTheme {
     ),
     AppTheme(
       name: 'Arctic White',
-      backgroundColor: const Color(0xFFFAFAFA),
-      boardColor: const Color(0xFFE0E0E0),
-      emptyTileColor: const Color(0xFFEEEEEE),
-      scoreTileColor: const Color(0xFFBDBDBD),
-      textColor: const Color(0xFF424242),
+      backgroundColor: const Color(0xFFE0E0E0),
+      boardColor: const Color(0xFFBDBDBD),
+      emptyTileColor: const Color(0xFFD6D6D6),
+      scoreTileColor: const Color(0xFF9E9E9E),
+      textColor: const Color(0xFF212121),
     ),
     AppTheme(
       name: 'Rhino Grey',
