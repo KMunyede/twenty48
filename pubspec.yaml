@@ -58,12 +58,12 @@ flutter_launcher_icons:
     generate: true
   windows:
     generate: true
-  image_path: "assets/my2048.png"
+  image_path: "assets/icon.png"
 
 # The following section is specific to Flutter packages.
 flutter:
   assets:
-    - assets/my2048.png
+    - assets/icon.png
   # fonts:
   #   - family: ClearSans
   #     fonts:
