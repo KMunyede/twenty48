@@ -1,14 +1,17 @@
 // lib/main.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'core/services/ad_service.dart';
 import 'features/game/providers/game_provider.dart';
 import 'features/game/ui/game_screen.dart';
 import 'features/settings/providers/theme_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(AdService.instance.init());
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.landscapeLeft,
