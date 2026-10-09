@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
+import '../../../core/services/ad_service.dart';
 import '../providers/game_provider.dart';
 import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
@@ -159,6 +160,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               const SizedBox(height: 16),
               _buildControls(context),
               const SizedBox(height: 16),
+              const AdBannerWidget(),
             ],
           ),
         ),
@@ -606,7 +608,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                 ),
                               ),
                               ElevatedButton(
-                                onPressed: () => game.initGame(),
+                                onPressed: () {
+                                  game.initGame();
+                                  AdService.instance.showInterstitialIfReady();
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: theme.scoreTileColor,
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -666,7 +671,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ),
           if (!isVertical) SizedBox(width: isExtraLarge ? 24 : 8) else SizedBox(height: isExtraLarge ? 24 : 12),
           _buildControlButton(
-            onPressed: () => game.initGame(),
+            onPressed: () {
+              game.initGame();
+              AdService.instance.showInterstitialIfReady();
+            },
             icon: Icons.refresh,
             label: 'New',
             theme: theme,
