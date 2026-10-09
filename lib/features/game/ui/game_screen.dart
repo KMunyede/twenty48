@@ -26,6 +26,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _isMoving = false;
   double _totalDx = 0;
   double _totalDy = 0;
+  bool _isShowingExtraTimeDialog = false;
 
   @override
   void initState() {
@@ -63,6 +64,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     final game = context.watch<GameProvider>();
+
+    if (!game.isGameOver) {
+      _isShowingExtraTimeDialog = false;
+    } else if (game.isTimerMode &&
+        game.remainingSeconds <= 0 &&
+        !game.hasUsedExtraTime &&
+        !_isShowingExtraTimeDialog) {
+      _isShowingExtraTimeDialog = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showExtraTimeDialog(context, game);
+        }
+      });
+    }
 
     // Trigger animations if needed
     if (game.shouldCelebrate && _shakeController.status != AnimationStatus.forward) {
@@ -649,14 +664,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       builder: (context, game, child) {
         final buttons = [
           _buildControlButton(
-            onPressed: game.canUndo ? () => game.undo() : null,
+            onPressed: () {
+              if (game.canUndo) {
+                game.undo();
+              } else {
+                _showRewardedUndoDialog(context, game);
+              }
+            },
             icon: Icons.undo,
             label: 'Undo',
             theme: theme,
             size: size,
             iconSize: iconSize,
             fontSize: fontSize,
-            isDisabled: !game.canUndo,
+            isDisabled: false,
           ),
           if (!isVertical) SizedBox(width: isExtraLarge ? 24 : 8) else SizedBox(height: isExtraLarge ? 24 : 12),
           _buildControlButton(
@@ -748,6 +769,89 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
+    );
+  }
+
+  void _showRewardedUndoDialog(BuildContext context, GameProvider game) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('No undos left'),
+          content: const Text('Watch a short ad for +3 Undos?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                AdService.instance.showRewarded(
+                  onReward: () => game.grantBonusUndos(3),
+                  onUnavailable: () {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Ad not available right now, try again later'),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+              child: const Text('Watch'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showExtraTimeDialog(BuildContext context, GameProvider game) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text("Time's up!"),
+          content: const Text('Watch an ad for +60 seconds?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('No thanks', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                AdService.instance.showRewarded(
+                  onReward: () => game.addBonusTime(60),
+                  onUnavailable: () {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Ad not available right now, try again later'),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+              child: const Text('Watch'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

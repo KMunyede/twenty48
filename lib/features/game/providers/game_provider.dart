@@ -32,6 +32,7 @@ class GameProvider extends ChangeNotifier {
   int _lastBonusTime = 0;
   bool _shouldCelebrate = false;
   int _celebrationId = 0; // To trigger UI updates for the same target reached twice
+  bool _hasUsedExtraTime = false;
 
   List<Tile> get tiles => _tiles;
   int get score => _score;
@@ -46,6 +47,7 @@ class GameProvider extends ChangeNotifier {
   int get lastBonusTime => _lastBonusTime;
   bool get shouldCelebrate => _shouldCelebrate;
   int get celebrationId => _celebrationId;
+  bool get hasUsedExtraTime => _hasUsedExtraTime;
 
   GameProvider() {
     _loadSettings().then((_) => initGame());
@@ -84,6 +86,7 @@ class GameProvider extends ChangeNotifier {
     _isGameOver = false;
     _isSwapMode = false;
     _firstSelectedTile = null;
+    _hasUsedExtraTime = false;
     _tilesHistory.clear();
     _scoreHistory.clear();
     _timerHistory.clear();
@@ -208,6 +211,30 @@ class GameProvider extends ChangeNotifier {
     _score = _scoreHistory.removeLast();
     _remainingSeconds = _timerHistory.removeLast();
     _isGameOver = _calculateGameOver(); // Recalculate in case we undo a loss
+    notifyListeners();
+  }
+
+  void grantBonusUndos(int n) {
+    if (_tiles.isEmpty) return;
+    int added = 0;
+    while (_tilesHistory.length < 10 && added < n) {
+      _tilesHistory.add(_tiles.map((t) => t.copyWith()).toList());
+      _scoreHistory.add(_score);
+      _timerHistory.add(_remainingSeconds);
+      added++;
+    }
+    notifyListeners();
+  }
+
+  void addBonusTime(int seconds) {
+    _remainingSeconds += seconds;
+    _hasUsedExtraTime = true;
+    if (_isGameOver && _remainingSeconds > 0) {
+      _isGameOver = false;
+      if (_isTimerMode) {
+        _startTimer();
+      }
+    }
     notifyListeners();
   }
 
