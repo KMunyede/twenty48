@@ -82,7 +82,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             Icons.timer,
                             () => context.read<GameProvider>().startTimerChallenge(2048),
                           ),
-                          const Divider(),
+                          Divider(color: theme.textColor.withValues(alpha: 0.3)),
                           Text('Choose Color Theme:', style: TextStyle(fontWeight: FontWeight.bold, color: theme.textColor)),
                           const SizedBox(height: 8),
                           RadioGroup<AppTheme>(

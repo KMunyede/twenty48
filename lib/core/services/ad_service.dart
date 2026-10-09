@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,9 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 class AdService {
   AdService._();
   static final AdService instance = AdService._();
+
+  final Completer<void> _initCompleter = Completer<void>();
+  Future<void> get ready => _initCompleter.future;
 
   bool get isSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
@@ -49,13 +53,20 @@ class AdService {
   bool _isLoadingRewarded = false;
 
   Future<void> init() async {
-    if (!isSupported) return;
+    if (!isSupported) {
+      if (!_initCompleter.isCompleted) _initCompleter.complete();
+      return;
+    }
     try {
       await MobileAds.instance.initialize();
       loadInterstitial();
       loadRewarded();
     } catch (e) {
       debugPrint('AdService init error: $e');
+    } finally {
+      if (!_initCompleter.isCompleted) {
+        _initCompleter.complete();
+      }
     }
   }
 
@@ -172,7 +183,11 @@ class AdService {
     );
   }
 
-  BannerAd? createAdaptiveBanner(AdSize adSize, VoidCallback onLoaded, VoidCallback onFailed) {
+  BannerAd? createAdaptiveBanner(
+    AdSize adSize,
+    VoidCallback onLoaded,
+    void Function(LoadAdError error) onFailed,
+  ) {
     if (!isSupported) return null;
 
     final banner = BannerAd(
@@ -182,9 +197,9 @@ class AdService {
       listener: BannerAdListener(
         onAdLoaded: (ad) => onLoaded(),
         onAdFailedToLoad: (ad, error) {
-          debugPrint('BannerAd failed to load: $error');
+          debugPrint('BannerAd failed to load: code ${error.code}, message: ${error.message}');
           ad.dispose();
-          onFailed();
+          onFailed(error);
         },
       ),
     );
@@ -204,43 +219,86 @@ class AdBannerWidget extends StatefulWidget {
 class _AdBannerWidgetState extends State<AdBannerWidget> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  Timer? _retryTimer;
+  int _retryCount = 0;
+
+  static const List<Duration> _retryDelays = [
+    Duration(seconds: 5),
+    Duration(seconds: 15),
+    Duration(seconds: 45),
+  ];
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_bannerAd == null && AdService.instance.isSupported) {
+    if (_bannerAd == null && _retryTimer == null && AdService.instance.isSupported) {
       _loadBanner();
     }
   }
 
   void _loadBanner() async {
+    if (!mounted || !AdService.instance.isSupported) return;
+
+    try {
+      await AdService.instance.ready.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {},
+      );
+    } catch (_) {}
+
+    if (!mounted) return;
+
     final mediaQuery = MediaQuery.of(context);
     final width = mediaQuery.size.width.truncate();
+    if (width <= 0) return;
+
     final adSize = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width) ??
         AdSize.banner;
 
+    if (!mounted) return;
+
+    _bannerAd?.dispose();
     _bannerAd = AdService.instance.createAdaptiveBanner(
       adSize,
       () {
         if (mounted) {
+          _retryCount = 0;
           setState(() {
             _isAdLoaded = true;
           });
         }
       },
-      () {
+      (error) {
         if (mounted) {
           setState(() {
             _isAdLoaded = false;
             _bannerAd = null;
           });
+          _scheduleRetry();
         }
       },
     );
   }
 
+  void _scheduleRetry() {
+    if (!mounted || _retryCount >= _retryDelays.length) return;
+
+    final delay = _retryDelays[_retryCount];
+    _retryCount++;
+    debugPrint('Scheduling banner retry #$_retryCount in ${delay.inSeconds}s');
+
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () {
+      if (mounted) {
+        _retryTimer = null;
+        _loadBanner();
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _retryTimer?.cancel();
     _bannerAd?.dispose();
     super.dispose();
   }

@@ -22,7 +22,7 @@ class AppTheme {
   static final List<AppTheme> themes = [
     AppTheme(
       name: 'Turtle green',
-      backgroundColor: const Color(0xFFE8F5E9),
+      backgroundColor: const Color(0xFFBFD8C0),
       boardColor: const Color(0xFF81C784),
       emptyTileColor: const Color(0xFFA5D6A7),
       scoreTileColor: const Color(0xFF66BB6A),
@@ -30,7 +30,7 @@ class AppTheme {
     ),
     AppTheme(
       name: 'Rare Indigo',
-      backgroundColor: const Color(0xFFE8EAF6),
+      backgroundColor: const Color(0xFFC3C7E0),
       boardColor: const Color(0xFF7986CB),
       emptyTileColor: const Color(0xFF9FA8DA),
       scoreTileColor: const Color(0xFF5C6BC0),
@@ -38,7 +38,7 @@ class AppTheme {
     ),
     AppTheme(
       name: 'Sunset Orange',
-      backgroundColor: const Color(0xFFFFF3E0),
+      backgroundColor: const Color(0xFFE8CFAE),
       boardColor: const Color(0xFFFFB74D),
       emptyTileColor: const Color(0xFFFFCC80),
       scoreTileColor: const Color(0xFFFFA726),
@@ -46,7 +46,7 @@ class AppTheme {
     ),
     AppTheme(
       name: 'Oceanic Blue',
-      backgroundColor: const Color(0xFFE1F5FE),
+      backgroundColor: const Color(0xFFB9D7E6),
       boardColor: const Color(0xFF4FC3F7),
       emptyTileColor: const Color(0xFF81D4FA),
       scoreTileColor: const Color(0xFF29B6F6),
@@ -54,7 +54,7 @@ class AppTheme {
     ),
     AppTheme(
       name: 'Arctic White',
-      backgroundColor: const Color(0xFFE0E0E0),
+      backgroundColor: const Color(0xFFD0D3D6),
       boardColor: const Color(0xFFBDBDBD),
       emptyTileColor: const Color(0xFFD6D6D6),
       scoreTileColor: const Color(0xFF9E9E9E),
@@ -62,11 +62,11 @@ class AppTheme {
     ),
     AppTheme(
       name: 'Rhino Grey',
-      backgroundColor: const Color(0xFFECEFF1),
+      backgroundColor: const Color(0xFF2E3338),
       boardColor: const Color(0xFF90A4AE),
       emptyTileColor: const Color(0xFFB0BEC5),
       scoreTileColor: const Color(0xFF78909C),
-      textColor: const Color(0xFF37474F),
+      textColor: const Color(0xFFECEFF1),
     ),
   ];
 }

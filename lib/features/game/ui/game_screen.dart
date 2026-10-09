@@ -89,6 +89,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
     }
 
+    final bool isDark = ThemeData.estimateBrightnessForColor(theme.backgroundColor) == Brightness.dark;
+    final systemUiStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      systemNavigationBarColor: theme.backgroundColor,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
     return Focus(
       focusNode: _focusNode,
       autofocus: true,
@@ -122,22 +131,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           _focusNode.requestFocus();
         },
         behavior: HitTestBehavior.opaque,
-        child: Scaffold(
-          backgroundColor: theme.backgroundColor,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            toolbarHeight: 48,
-            actions: [
-              IconButton(
-                icon: Icon(Icons.settings, color: theme.textColor),
-                onPressed: () => showDialog(
-                  context: context,
-                  builder: (context) => const SettingsDialog(),
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiStyle,
+          child: Scaffold(
+            backgroundColor: theme.backgroundColor,
+            appBar: AppBar(
+              backgroundColor: theme.backgroundColor,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
+              toolbarHeight: 48,
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.settings, color: theme.textColor),
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (context) => const SettingsDialog(),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           body: SafeArea(
             child: OrientationBuilder(
               builder: (context, orientation) {
@@ -149,6 +162,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               },
             ),
           ),
+        ),
         ),
       ),
     );
