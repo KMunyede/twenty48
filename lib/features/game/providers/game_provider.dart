@@ -24,6 +24,8 @@ class GameProvider extends ChangeNotifier {
   Tile? _firstSelectedTile;
 
   // Undo history
+  static const int initialUndoCharges = 3;
+  int _undoCharges = initialUndoCharges;
   final List<List<Tile>> _tilesHistory = [];
   final List<int> _scoreHistory = [];
   final List<int> _timerHistory = [];
@@ -39,6 +41,8 @@ class GameProvider extends ChangeNotifier {
   int get highScore => _highScore;
   bool get isGameOver => _isGameOver;
   bool get canUndo => _tilesHistory.isNotEmpty;
+  int get undoCharges => _undoCharges;
+  bool get needsUndoAd => _undoCharges == 0;
   bool get isSwapMode => _isSwapMode;
   Tile? get firstSelectedTile => _firstSelectedTile;
   bool get isTimerMode => _isTimerMode;
@@ -87,6 +91,7 @@ class GameProvider extends ChangeNotifier {
     _isSwapMode = false;
     _firstSelectedTile = null;
     _hasUsedExtraTime = false;
+    _undoCharges = initialUndoCharges;
     _tilesHistory.clear();
     _scoreHistory.clear();
     _timerHistory.clear();
@@ -205,24 +210,18 @@ class GameProvider extends ChangeNotifier {
   bool moveDown() => _move(1, 0);
 
   void undo() {
-    if (!canUndo) return;
+    if (!canUndo || _undoCharges <= 0) return;
 
     _tiles = _tilesHistory.removeLast();
     _score = _scoreHistory.removeLast();
     _remainingSeconds = _timerHistory.removeLast();
     _isGameOver = _calculateGameOver(); // Recalculate in case we undo a loss
+    _undoCharges--;
     notifyListeners();
   }
 
   void grantBonusUndos(int n) {
-    if (_tiles.isEmpty) return;
-    int added = 0;
-    while (_tilesHistory.length < 10 && added < n) {
-      _tilesHistory.add(_tiles.map((t) => t.copyWith()).toList());
-      _scoreHistory.add(_score);
-      _timerHistory.add(_remainingSeconds);
-      added++;
-    }
+    _undoCharges = min(_undoCharges + n, 10);
     notifyListeners();
   }
 

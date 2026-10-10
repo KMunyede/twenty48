@@ -679,19 +679,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         final buttons = [
           _buildControlButton(
             onPressed: () {
-              if (game.canUndo) {
-                game.undo();
-              } else {
+              if (game.needsUndoAd) {
                 _showRewardedUndoDialog(context, game);
+              } else if (game.canUndo) {
+                game.undo();
               }
             },
             icon: Icons.undo,
-            label: 'Undo',
+            label: 'Undo (${game.undoCharges})',
             theme: theme,
             size: size,
             iconSize: iconSize,
             fontSize: fontSize,
-            isDisabled: false,
+            isDisabled: !game.needsUndoAd && !game.canUndo,
           ),
           if (!isVertical) SizedBox(width: isExtraLarge ? 24 : 8) else SizedBox(height: isExtraLarge ? 24 : 12),
           _buildControlButton(
