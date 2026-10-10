@@ -8,6 +8,7 @@ import '../models/tile.dart';
 
 class GameProvider extends ChangeNotifier {
   static const int gridSize = 4;
+  Random _rng = Random();
   List<Tile> _tiles = [];
   int _score = 0;
   int _highScore = 0;
@@ -73,6 +74,14 @@ class GameProvider extends ChangeNotifier {
     await prefs.setBool('isTimerMode', _isTimerMode);
     await prefs.setInt('targetValue', _targetValue);
     await prefs.setInt('highScore', _highScore);
+  }
+
+  void useSeededRandom(int seed) {
+    _rng = Random(seed);
+  }
+
+  void useDefaultRandom() {
+    _rng = Random();
   }
 
   void startTimerChallenge(int target) {
@@ -147,11 +156,11 @@ class GameProvider extends ChangeNotifier {
     }
 
     if (emptyPositions.isNotEmpty) {
-      final pos = emptyPositions[Random().nextInt(emptyPositions.length)];
+      final pos = emptyPositions[_rng.nextInt(emptyPositions.length)];
       _tiles.add(Tile(
         x: pos.x,
         y: pos.y,
-        value: Random().nextInt(10) == 0 ? 4 : 2,
+        value: _rng.nextInt(10) == 0 ? 4 : 2,
         isNew: true,
       ));
     }
