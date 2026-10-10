@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../core/theme/contrast_text.dart';
 import '../../../core/theme/dialog_colors.dart';
 import '../providers/game_provider.dart';
 import '../../settings/providers/theme_provider.dart';
@@ -470,7 +471,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Text(
             label,
             style: TextStyle(
-              color: theme.backgroundColor,
+              color: readableTextOn(theme.scoreTileColor),
               fontWeight: FontWeight.bold,
               fontSize: isExtraLarge ? 18 : (isLarge ? 12 : 9),
             ),
