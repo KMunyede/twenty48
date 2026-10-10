@@ -680,7 +680,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           _buildControlButton(
             onPressed: () {
               if (game.needsUndoAd) {
-                _showRewardedUndoDialog(context, game);
+                if (game.canOfferUndoAd) {
+                  _showRewardedUndoDialog(context, game);
+                } else {
+                  _showMaxUndoRefillsReachedDialog(context);
+                }
               } else if (game.canUndo) {
                 game.undo();
               }
@@ -783,6 +787,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
+    );
+  }
+
+  void _showMaxUndoRefillsReachedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('No undos left'),
+          content: const Text(
+            'You have used all undo refills for this game. Start a new game for fresh undos.',
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
     );
   }
 

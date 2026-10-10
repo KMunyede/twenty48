@@ -25,7 +25,9 @@ class GameProvider extends ChangeNotifier {
 
   // Undo history
   static const int initialUndoCharges = 3;
+  static const int maxUndoRefills = 3;
   int _undoCharges = initialUndoCharges;
+  int _undoRefillsUsed = 0;
   final List<List<Tile>> _tilesHistory = [];
   final List<int> _scoreHistory = [];
   final List<int> _timerHistory = [];
@@ -43,6 +45,8 @@ class GameProvider extends ChangeNotifier {
   bool get canUndo => _tilesHistory.isNotEmpty;
   int get undoCharges => _undoCharges;
   bool get needsUndoAd => _undoCharges == 0;
+  int get undoRefillsUsed => _undoRefillsUsed;
+  bool get canOfferUndoAd => _undoRefillsUsed < maxUndoRefills;
   bool get isSwapMode => _isSwapMode;
   Tile? get firstSelectedTile => _firstSelectedTile;
   bool get isTimerMode => _isTimerMode;
@@ -92,6 +96,7 @@ class GameProvider extends ChangeNotifier {
     _firstSelectedTile = null;
     _hasUsedExtraTime = false;
     _undoCharges = initialUndoCharges;
+    _undoRefillsUsed = 0;
     _tilesHistory.clear();
     _scoreHistory.clear();
     _timerHistory.clear();
@@ -222,6 +227,7 @@ class GameProvider extends ChangeNotifier {
 
   void grantBonusUndos(int n) {
     _undoCharges = min(_undoCharges + n, 10);
+    _undoRefillsUsed++;
     notifyListeners();
   }
 
