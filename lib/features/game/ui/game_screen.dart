@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../core/theme/dialog_colors.dart';
 import '../providers/game_provider.dart';
 import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
@@ -824,7 +825,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: getDialogTextColor(context.read<ThemeProvider>().currentTheme.backgroundColor).withValues(alpha: 0.8),
+                ),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -867,7 +873,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },
-              child: const Text('No thanks', style: TextStyle(color: Colors.grey)),
+              child: Text(
+                'No thanks',
+                style: TextStyle(
+                  color: getDialogTextColor(context.read<ThemeProvider>().currentTheme.backgroundColor).withValues(alpha: 0.8),
+                ),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
