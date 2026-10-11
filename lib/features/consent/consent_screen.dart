@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/ad_service.dart';
+import '../../core/theme/contrast_text.dart';
 import 'consent_service.dart';
 import 'consent_texts.dart';
 
@@ -80,11 +81,16 @@ class _ConsentScreenState extends State<ConsentScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final bgColor = theme.scaffoldBackgroundColor;
+    final primaryText = readableTextOn(bgColor);
+    final titleColor = primaryText;
+    final bodyColor = primaryText == Colors.white ? Colors.white70 : Colors.black54;
+    final linkColor = primaryText == Colors.white ? const Color(0xFFA5D6A7) : const Color(0xFF1B5E20);
 
     return PopScope(
       canPop: false,
       child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: bgColor,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -100,9 +106,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       kConsentTitle,
                       textAlign: TextAlign.center,
                       style: textTheme.headlineSmall?.copyWith(
+                        color: titleColor,
                         fontWeight: FontWeight.bold,
                       ) ??
-                          const TextStyle(
+                          TextStyle(
+                            color: titleColor,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -115,9 +123,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       kConsentBody,
                       textAlign: TextAlign.center,
                       style: textTheme.bodyMedium?.copyWith(
+                        color: bodyColor,
                         height: 1.5,
                       ) ??
-                          const TextStyle(
+                          TextStyle(
+                            color: bodyColor,
                             fontSize: 16,
                             height: 1.5,
                           ),
@@ -130,10 +140,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       label: kConsentPrivacyLinkLabel,
                       child: TextButton(
                         onPressed: () => _launchPrivacyPolicy(context),
-                        child: const Text(
+                        child: Text(
                           kConsentPrivacyLinkLabel,
                           style: TextStyle(
-                            color: Color(0xFF1B5E20),
+                            color: linkColor,
                             decoration: TextDecoration.underline,
                             fontWeight: FontWeight.w600,
                           ),
