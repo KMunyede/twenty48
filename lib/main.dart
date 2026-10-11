@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/dialog_colors.dart';
+import 'features/consent/consent_gate.dart';
 import 'features/game/providers/game_provider.dart';
 import 'features/game/ui/game_screen.dart';
 import 'features/settings/providers/theme_provider.dart';
@@ -64,7 +65,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
-          home: const GameScreen(),
+          home: const ConsentGate(child: GameScreen()),
         );
       },
     );
