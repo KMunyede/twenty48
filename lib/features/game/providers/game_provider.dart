@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:twenty48/core/services/daily_challenge_service.dart';
 import '../models/tile.dart';
 
 class GameProvider extends ChangeNotifier {
@@ -13,6 +14,13 @@ class GameProvider extends ChangeNotifier {
   int _score = 0;
   int _highScore = 0;
   bool _isGameOver = false;
+
+  // Daily Challenge State
+  final DailyChallengeService _dailyService;
+  int _dailySeed = 0;
+  bool _isDailyMode = false;
+  bool _dailyCompletedThisGame = false;
+  static const int _dailyTarget = 2048;
 
   // Timer Challenge State
   bool _isTimerMode = false;
@@ -57,8 +65,11 @@ class GameProvider extends ChangeNotifier {
   bool get shouldCelebrate => _shouldCelebrate;
   int get celebrationId => _celebrationId;
   bool get hasUsedExtraTime => _hasUsedExtraTime;
+  bool get isDailyMode => _isDailyMode;
+  bool get dailyCompletedThisGame => _dailyCompletedThisGame;
 
-  GameProvider() {
+  GameProvider({DailyChallengeService? dailyService})
+      : _dailyService = dailyService ?? DailyChallengeService() {
     _loadSettings().then((_) => initGame());
   }
 
@@ -84,7 +95,18 @@ class GameProvider extends ChangeNotifier {
     _rng = Random();
   }
 
+  void startDaily() {
+    _isDailyMode = true;
+    _isTimerMode = false;
+    _dailySeed = _dailyService.todaySeed();
+    useSeededRandom(_dailySeed);
+    _dailyCompletedThisGame = false;
+    initGame();
+  }
+
   void startTimerChallenge(int target) {
+    _isDailyMode = false;
+    useDefaultRandom();
     _isTimerMode = true;
     _targetValue = target;
     _saveSettings();
@@ -92,12 +114,17 @@ class GameProvider extends ChangeNotifier {
   }
 
   void setStandardMode() {
+    _isDailyMode = false;
+    useDefaultRandom();
     _isTimerMode = false;
     _saveSettings();
     initGame();
   }
 
   void initGame() {
+    if (_isDailyMode) {
+      useSeededRandom(_dailySeed);
+    }
     _tiles = [];
     _score = 0;
     _isGameOver = false;
@@ -297,6 +324,11 @@ class GameProvider extends ChangeNotifier {
             if (val >= _targetValue) {
               _isGameOver = true; // Win condition in timer mode
             }
+          }
+
+          if (_isDailyMode && val >= _dailyTarget && !_dailyCompletedThisGame) {
+            _dailyCompletedThisGame = true;
+            _dailyService.markCompleted().catchError((_) => 0);
           }
 
           if (_score > _highScore) {
