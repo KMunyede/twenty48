@@ -833,28 +833,29 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
-                foregroundColor: Colors.white,
+            if (AdService.instance.adsEnabled)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  AdService.instance.showRewarded(
+                    onReward: () => game.grantBonusUndos(3),
+                    onUnavailable: () {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ad not available right now, try again later'),
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
+                child: const Text('Watch'),
               ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                AdService.instance.showRewarded(
-                  onReward: () => game.grantBonusUndos(3),
-                  onUnavailable: () {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Ad not available right now, try again later'),
-                        ),
-                      );
-                    }
-                  },
-                );
-              },
-              child: const Text('Watch'),
-            ),
           ],
         );
       },
@@ -881,28 +882,29 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
-                foregroundColor: Colors.white,
+            if (AdService.instance.adsEnabled)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepOrange,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  AdService.instance.showRewarded(
+                    onReward: () => game.addBonusTime(60),
+                    onUnavailable: () {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Ad not available right now, try again later'),
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
+                child: const Text('Watch'),
               ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                AdService.instance.showRewarded(
-                  onReward: () => game.addBonusTime(60),
-                  onUnavailable: () {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Ad not available right now, try again later'),
-                        ),
-                      );
-                    }
-                  },
-                );
-              },
-              child: const Text('Watch'),
-            ),
           ],
         );
       },

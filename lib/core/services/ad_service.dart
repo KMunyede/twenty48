@@ -8,6 +8,14 @@ class AdService {
   AdService._();
   static final AdService instance = AdService._();
 
+  bool _adsEnabled = false;
+  final ValueNotifier<bool> _adsEnabledNotifier = ValueNotifier<bool>(false);
+
+  bool get adsEnabled => _adsEnabled;
+  ValueListenable<bool> get adsEnabledListenable => _adsEnabledNotifier;
+
+  bool _hasInitialized = false;
+
   final Completer<void> _initCompleter = Completer<void>();
   Future<void> get ready => _initCompleter.future;
 
@@ -52,6 +60,39 @@ class AdService {
   RewardedAd? _rewardedAd;
   bool _isLoadingRewarded = false;
 
+  Future<void> enableAds() async {
+    if (_adsEnabled || !isSupported) return;
+    _adsEnabled = true;
+    _adsEnabledNotifier.value = true;
+    try {
+      if (!_hasInitialized) {
+        _hasInitialized = true;
+        await init();
+      } else {
+        loadInterstitial();
+        loadRewarded();
+      }
+    } catch (e) {
+      debugPrint('AdService enableAds error: $e');
+      _hasInitialized = false;
+      _adsEnabled = false;
+      _adsEnabledNotifier.value = false;
+    }
+  }
+
+  void disableAds() {
+    _adsEnabled = false;
+    _adsEnabledNotifier.value = false;
+
+    _interstitialAd?.dispose();
+    _interstitialAd = null;
+    _isLoadingInterstitial = false;
+
+    _rewardedAd?.dispose();
+    _rewardedAd = null;
+    _isLoadingRewarded = false;
+  }
+
   Future<void> init() async {
     if (!isSupported) {
       if (!_initCompleter.isCompleted) _initCompleter.complete();
@@ -59,10 +100,13 @@ class AdService {
     }
     try {
       await MobileAds.instance.initialize();
-      loadInterstitial();
-      loadRewarded();
+      if (_adsEnabled) {
+        loadInterstitial();
+        loadRewarded();
+      }
     } catch (e) {
       debugPrint('AdService init error: $e');
+      rethrow;
     } finally {
       if (!_initCompleter.isCompleted) {
         _initCompleter.complete();
@@ -71,7 +115,7 @@ class AdService {
   }
 
   void loadInterstitial() {
-    if (!isSupported || _isLoadingInterstitial || _interstitialAd != null) return;
+    if (!_adsEnabled || !isSupported || _isLoadingInterstitial || _interstitialAd != null) return;
     _isLoadingInterstitial = true;
 
     InterstitialAd.load(
@@ -92,7 +136,7 @@ class AdService {
   }
 
   void showInterstitialIfReady() {
-    if (!isSupported) return;
+    if (!_adsEnabled || !isSupported) return;
 
     final now = DateTime.now();
     if (_lastInterstitialTime != null &&
@@ -125,7 +169,7 @@ class AdService {
   }
 
   void loadRewarded() {
-    if (!isSupported || _isLoadingRewarded || _rewardedAd != null) return;
+    if (!_adsEnabled || !isSupported || _isLoadingRewarded || _rewardedAd != null) return;
     _isLoadingRewarded = true;
 
     RewardedAd.load(
@@ -149,9 +193,11 @@ class AdService {
     required VoidCallback onReward,
     required VoidCallback onUnavailable,
   }) {
-    if (!isSupported || _rewardedAd == null) {
+    if (!_adsEnabled || !isSupported || _rewardedAd == null) {
       onUnavailable();
-      loadRewarded();
+      if (_adsEnabled) {
+        loadRewarded();
+      }
       return;
     }
 
@@ -188,7 +234,7 @@ class AdService {
     VoidCallback onLoaded,
     void Function(LoadAdError error) onFailed,
   ) {
-    if (!isSupported) return null;
+    if (!_adsEnabled || !isSupported) return null;
 
     final banner = BannerAd(
       adUnitId: _bannerAdUnitId,
@@ -229,15 +275,53 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    AdService.instance.adsEnabledListenable.addListener(_onAdsEnabledChanged);
+  }
+
+  @override
+  void dispose() {
+    AdService.instance.adsEnabledListenable.removeListener(_onAdsEnabledChanged);
+    _retryTimer?.cancel();
+    _bannerAd?.dispose();
+    super.dispose();
+  }
+
+  void _onAdsEnabledChanged() {
+    if (!mounted) return;
+    if (!AdService.instance.adsEnabled) {
+      _retryTimer?.cancel();
+      _retryTimer = null;
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      setState(() {
+        _isAdLoaded = false;
+      });
+    } else {
+      if (_bannerAd == null && _retryTimer == null) {
+        _loadBanner();
+      }
+    }
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_bannerAd == null && _retryTimer == null && AdService.instance.isSupported) {
+    if (_bannerAd == null &&
+        _retryTimer == null &&
+        AdService.instance.isSupported &&
+        AdService.instance.adsEnabled) {
       _loadBanner();
     }
   }
 
   void _loadBanner() async {
-    if (!mounted || !AdService.instance.isSupported) return;
+    if (!mounted ||
+        !AdService.instance.isSupported ||
+        !AdService.instance.adsEnabled) {
+      return;
+    }
 
     try {
       await AdService.instance.ready.timeout(
@@ -246,7 +330,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
       );
     } catch (_) {}
 
-    if (!mounted) return;
+    if (!mounted || !AdService.instance.adsEnabled) return;
 
     final mediaQuery = MediaQuery.of(context);
     final width = mediaQuery.size.width.truncate();
@@ -255,7 +339,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
     final adSize = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width) ??
         AdSize.banner;
 
-    if (!mounted) return;
+    if (!mounted || !AdService.instance.adsEnabled) return;
 
     _bannerAd?.dispose();
     _bannerAd = AdService.instance.createAdaptiveBanner(
@@ -281,7 +365,11 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   }
 
   void _scheduleRetry() {
-    if (!mounted || _retryCount >= _retryDelays.length) return;
+    if (!mounted ||
+        _retryCount >= _retryDelays.length ||
+        !AdService.instance.adsEnabled) {
+      return;
+    }
 
     final delay = _retryDelays[_retryCount];
     _retryCount++;
@@ -289,7 +377,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
 
     _retryTimer?.cancel();
     _retryTimer = Timer(delay, () {
-      if (mounted) {
+      if (mounted && AdService.instance.adsEnabled) {
         _retryTimer = null;
         _loadBanner();
       }
@@ -297,22 +385,20 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   }
 
   @override
-  void dispose() {
-    _retryTimer?.cancel();
-    _bannerAd?.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (!_isAdLoaded || _bannerAd == null) {
-      return const SizedBox.shrink();
-    }
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdService.instance.adsEnabledListenable,
+      builder: (context, adsEnabled, child) {
+        if (!adsEnabled || !_isAdLoaded || _bannerAd == null) {
+          return const SizedBox.shrink();
+        }
 
-    return SizedBox(
-      width: _bannerAd!.size.width.toDouble(),
-      height: _bannerAd!.size.height.toDouble(),
-      child: AdWidget(ad: _bannerAd!),
+        return SizedBox(
+          width: _bannerAd!.size.width.toDouble(),
+          height: _bannerAd!.size.height.toDouble(),
+          child: AdWidget(ad: _bannerAd!),
+        );
+      },
     );
   }
 }
