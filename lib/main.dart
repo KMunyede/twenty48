@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
         final theme = themeProvider.currentTheme;
         final textColor = getDialogTextColor(theme.backgroundColor);
         return MaterialApp(
-          title: '2048 Master',
+          title: '2048 GrandMasters',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             useMaterial3: true,
