@@ -8,6 +8,7 @@ import 'package:confetti/confetti.dart';
 import '../../../core/services/ad_service.dart';
 import '../../../core/theme/contrast_text.dart';
 import '../../../core/theme/dialog_colors.dart';
+import '../../../core/update/update_service.dart';
 import '../providers/game_provider.dart';
 import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
@@ -38,8 +39,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 500),
     )..repeat(reverse: true);
-    
-    _confettiController = ConfettiController(duration: const Duration(seconds: 7));
+
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 7),
+    );
     _shakeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -50,6 +53,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (_focusNode.canRequestFocus) {
         _focusNode.requestFocus();
       }
+      UpdateService().checkOnLaunch();
     });
   }
 
@@ -82,7 +86,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
 
     // Trigger animations if needed
-    if (game.shouldCelebrate && _shakeController.status != AnimationStatus.forward) {
+    if (game.shouldCelebrate &&
+        _shakeController.status != AnimationStatus.forward) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _confettiController.play();
@@ -91,13 +96,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
     }
 
-    final bool isDark = ThemeData.estimateBrightnessForColor(theme.backgroundColor) == Brightness.dark;
+    final bool isDark =
+        ThemeData.estimateBrightnessForColor(theme.backgroundColor) ==
+        Brightness.dark;
     final systemUiStyle = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       systemNavigationBarColor: theme.backgroundColor,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     return Focus(
@@ -109,13 +118,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           bool moved = false;
           bool isGameKey = true;
 
-          if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.keyW) {
+          if (key == LogicalKeyboardKey.arrowUp ||
+              key == LogicalKeyboardKey.keyW) {
             moved = game.moveUp();
-          } else if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.keyS) {
+          } else if (key == LogicalKeyboardKey.arrowDown ||
+              key == LogicalKeyboardKey.keyS) {
             moved = game.moveDown();
-          } else if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.keyA) {
+          } else if (key == LogicalKeyboardKey.arrowLeft ||
+              key == LogicalKeyboardKey.keyA) {
             moved = game.moveLeft();
-          } else if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.keyD) {
+          } else if (key == LogicalKeyboardKey.arrowRight ||
+              key == LogicalKeyboardKey.keyD) {
             moved = game.moveRight();
           } else {
             isGameKey = false;
@@ -153,18 +166,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ],
             ),
-          body: SafeArea(
-            child: OrientationBuilder(
-              builder: (context, orientation) {
-                final bool isLandscape = orientation == Orientation.landscape;
-                if (isLandscape) {
-                  return _buildLandscapeLayout(context, game);
-                }
-                return _buildPortraitLayout(context, game);
-              },
+            body: SafeArea(
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  final bool isLandscape = orientation == Orientation.landscape;
+                  if (isLandscape) {
+                    return _buildLandscapeLayout(context, game);
+                  }
+                  return _buildPortraitLayout(context, game);
+                },
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -183,11 +196,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 _buildTimer(context, game),
                 const SizedBox(height: 16),
               ],
-              Expanded(
-                child: Center(
-                  child: _buildAnimatedGameBoard(),
-                ),
-              ),
+              Expanded(child: Center(child: _buildAnimatedGameBoard())),
               const SizedBox(height: 16),
               _buildControls(context),
               const SizedBox(height: 16),
@@ -203,7 +212,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   Widget _buildLandscapeLayout(BuildContext context, GameProvider game) {
     final size = MediaQuery.of(context).size;
     final bool isLargeScreen = size.width > 1000;
-    
+
     return Stack(
       children: [
         Padding(
@@ -220,17 +229,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _buildHeader(
-                        context, 
-                        isCompact: !isLargeScreen, 
+                        context,
+                        isCompact: !isLargeScreen,
                         isExtraLarge: isLargeScreen,
                         isVertical: true,
                       ),
                       if (game.isTimerMode) ...[
                         SizedBox(height: isLargeScreen ? 32 : 16),
                         _buildTimer(
-                          context, 
-                          game, 
-                          isCompact: !isLargeScreen, 
+                          context,
+                          game,
+                          isCompact: !isLargeScreen,
                           isExtraLarge: isLargeScreen,
                         ),
                       ],
@@ -257,8 +266,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 flex: isLargeScreen ? 2 : 3,
                 child: SingleChildScrollView(
                   child: _buildControls(
-                    context, 
-                    isCompact: !isLargeScreen, 
+                    context,
+                    isCompact: !isLargeScreen,
                     isExtraLarge: isLargeScreen,
                     isVertical: true,
                   ),
@@ -276,7 +285,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return AnimatedBuilder(
       animation: _shakeController,
       builder: (context, child) {
-        final double shake = sin(_shakeController.value * 10 * pi) * 10 * (1 - _shakeController.value);
+        final double shake =
+            sin(_shakeController.value * 10 * pi) *
+            10 *
+            (1 - _shakeController.value);
         return Transform.translate(
           offset: Offset(shake, 0),
           child: _buildGameBoard(context),
@@ -310,7 +322,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildHeader(BuildContext context, {bool isCompact = false, bool isExtraLarge = false, bool isVertical = false}) {
+  Widget _buildHeader(
+    BuildContext context, {
+    bool isCompact = false,
+    bool isExtraLarge = false,
+    bool isVertical = false,
+  }) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return Consumer<GameProvider>(
       builder: (context, game, child) {
@@ -334,11 +351,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             if (isVertical) SizedBox(height: isExtraLarge ? 24 : 12),
             Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isExtraLarge ? 24 : 12, 
-                vertical: isExtraLarge ? 16 : (isCompact ? 4 : 8)
+                horizontal: isExtraLarge ? 24 : 12,
+                vertical: isExtraLarge ? 16 : (isCompact ? 4 : 8),
               ),
               decoration: BoxDecoration(
-                border: Border.all(color: theme.textColor.withValues(alpha: 0.3), width: isExtraLarge ? 2 : 1),
+                border: Border.all(
+                  color: theme.textColor.withValues(alpha: 0.3),
+                  width: isExtraLarge ? 2 : 1,
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -367,10 +387,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         ];
 
         if (isVertical) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: children,
-          );
+          return Column(mainAxisSize: MainAxisSize.min, children: children);
         }
 
         return Wrap(
@@ -383,7 +400,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildTimer(BuildContext context, GameProvider game, {bool isCompact = false, bool isExtraLarge = false}) {
+  Widget _buildTimer(
+    BuildContext context,
+    GameProvider game, {
+    bool isCompact = false,
+    bool isExtraLarge = false,
+  }) {
     return AnimatedBuilder(
       animation: _timerAnimationController,
       builder: (context, child) {
@@ -404,18 +426,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           shouldFlash = true;
         }
 
-        final displayColor = (shouldFlash
-            ? Color.lerp(
-                baseColor.withValues(alpha: 0.5),
-                baseColor.withValues(alpha: 1.0),
-                _timerAnimationController.value,
-              )
-            : baseColor) ?? baseColor;
+        final displayColor =
+            (shouldFlash
+                ? Color.lerp(
+                    baseColor.withValues(alpha: 0.5),
+                    baseColor.withValues(alpha: 1.0),
+                    _timerAnimationController.value,
+                  )
+                : baseColor) ??
+            baseColor;
 
         return Container(
           padding: EdgeInsets.symmetric(
-            horizontal: isExtraLarge ? 64 : (isCompact ? 16 : 32), 
-            vertical: isExtraLarge ? 24 : (isCompact ? 8 : 12)
+            horizontal: isExtraLarge ? 64 : (isCompact ? 16 : 32),
+            vertical: isExtraLarge ? 24 : (isCompact ? 8 : 12),
           ),
           decoration: BoxDecoration(
             color: displayColor,
@@ -455,7 +479,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildScoreBox(String label, String value, theme, {bool isLarge = false, bool isExtraLarge = false}) {
+  Widget _buildScoreBox(
+    String label,
+    String value,
+    theme, {
+    bool isLarge = false,
+    bool isExtraLarge = false,
+  }) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isExtraLarge ? 48 : (isLarge ? 24 : 12),
@@ -564,9 +594,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     ),
                     Stack(
                       children: game.tiles.map((tile) {
-                        final isSelected = game.firstSelectedTile?.id == tile.id;
+                        final isSelected =
+                            game.firstSelectedTile?.id == tile.id;
                         final tileWidget = TileWidget(tile: tile);
-                        
+
                         Widget animatedTile = tileWidget;
 
                         if (tile.isMerged) {
@@ -588,7 +619,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             tween: Tween(begin: 0.0, end: 1.0),
                             curve: Curves.easeOut,
                             builder: (context, value, child) {
-                              return Transform.scale(scale: value, child: child);
+                              return Transform.scale(
+                                scale: value,
+                                child: child,
+                              );
                             },
                             child: tileWidget,
                           );
@@ -603,19 +637,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                           child: SizedBox(
                             width: tileSize,
                             height: tileSize,
-                            child: game.isSwapMode 
-                              ? GestureDetector(
-                                  onTap: () => game.selectTileForSwap(tile),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Container(
-                                    decoration: isSelected ? BoxDecoration(
-                                      border: Border.all(color: Colors.white, width: 4),
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ) : null,
-                                    child: animatedTile,
-                                  ),
-                                )
-                              : animatedTile,
+                            child: game.isSwapMode
+                                ? GestureDetector(
+                                    onTap: () => game.selectTileForSwap(tile),
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Container(
+                                      decoration: isSelected
+                                          ? BoxDecoration(
+                                              border: Border.all(
+                                                color: Colors.white,
+                                                width: 4,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8.0),
+                                            )
+                                          : null,
+                                      child: animatedTile,
+                                    ),
+                                  )
+                                : animatedTile,
                           ),
                         );
                       }).toList(),
@@ -645,7 +685,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: theme.scoreTileColor,
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
                                 ),
                                 child: const Text(
                                   'Play Again',
@@ -670,7 +713,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildControls(BuildContext context, {bool isCompact = false, bool isExtraLarge = false, bool isVertical = false}) {
+  Widget _buildControls(
+    BuildContext context, {
+    bool isCompact = false,
+    bool isExtraLarge = false,
+    bool isVertical = false,
+  }) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     final size = isExtraLarge ? 140.0 : (isCompact ? 64.0 : 100.0);
     final iconSize = isExtraLarge ? 48.0 : (isCompact ? 20.0 : 30.0);
@@ -699,7 +747,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             fontSize: fontSize,
             isDisabled: !game.needsUndoAd && !game.canUndo,
           ),
-          if (!isVertical) SizedBox(width: isExtraLarge ? 24 : 8) else SizedBox(height: isExtraLarge ? 24 : 12),
+          if (!isVertical)
+            SizedBox(width: isExtraLarge ? 24 : 8)
+          else
+            SizedBox(height: isExtraLarge ? 24 : 12),
           _buildControlButton(
             onPressed: () => game.toggleSwapMode(),
             icon: Icons.swap_horiz,
@@ -710,7 +761,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             fontSize: fontSize,
             color: game.isSwapMode ? Colors.orange : null,
           ),
-          if (!isVertical) SizedBox(width: isExtraLarge ? 24 : 8) else SizedBox(height: isExtraLarge ? 24 : 12),
+          if (!isVertical)
+            SizedBox(width: isExtraLarge ? 24 : 8)
+          else
+            SizedBox(height: isExtraLarge ? 24 : 12),
           _buildControlButton(
             onPressed: () {
               game.initGame();
@@ -731,9 +785,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               Padding(
                 padding: EdgeInsets.only(bottom: isExtraLarge ? 24.0 : 12.0),
                 child: Text(
-                  game.firstSelectedTile == null 
-                    ? 'Select first tile' 
-                    : 'Select second tile',
+                  game.firstSelectedTile == null
+                      ? 'Select first tile'
+                      : 'Select second tile',
                   style: TextStyle(
                     color: theme.textColor,
                     fontSize: isExtraLarge ? 24 : (isCompact ? 14 : 18),
@@ -741,7 +795,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-            if (isVertical) 
+            if (isVertical)
               Column(children: buttons)
             else
               Row(
@@ -784,7 +838,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: fontSize),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: fontSize,
+              ),
             ),
           ],
         ),
@@ -829,7 +887,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               child: Text(
                 'Cancel',
                 style: TextStyle(
-                  color: getDialogTextColor(context.read<ThemeProvider>().currentTheme.backgroundColor).withValues(alpha: 0.8),
+                  color: getDialogTextColor(
+                    context.read<ThemeProvider>().currentTheme.backgroundColor,
+                  ).withValues(alpha: 0.8),
                 ),
               ),
             ),
@@ -847,7 +907,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Ad not available right now, try again later'),
+                            content: Text(
+                              'Ad not available right now, try again later',
+                            ),
                           ),
                         );
                       }
@@ -878,7 +940,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               child: Text(
                 'No thanks',
                 style: TextStyle(
-                  color: getDialogTextColor(context.read<ThemeProvider>().currentTheme.backgroundColor).withValues(alpha: 0.8),
+                  color: getDialogTextColor(
+                    context.read<ThemeProvider>().currentTheme.backgroundColor,
+                  ).withValues(alpha: 0.8),
                 ),
               ),
             ),
@@ -896,7 +960,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Ad not available right now, try again later'),
+                            content: Text(
+                              'Ad not available right now, try again later',
+                            ),
                           ),
                         );
                       }
@@ -920,7 +986,8 @@ class _BonusTimeAnimation extends StatefulWidget {
   State<_BonusTimeAnimation> createState() => _BonusTimeAnimationState();
 }
 
-class _BonusTimeAnimationState extends State<_BonusTimeAnimation> with SingleTickerProviderStateMixin {
+class _BonusTimeAnimationState extends State<_BonusTimeAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;
   late Animation<Offset> _moveAnimation;
@@ -968,7 +1035,11 @@ class _BonusTimeAnimationState extends State<_BonusTimeAnimation> with SingleTic
                 color: Colors.orange,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
-                  BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
                 ],
               ),
               child: Text(
