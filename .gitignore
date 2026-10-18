@@ -49,3 +49,6 @@ android/key.properties
 *.jks
 *.keystore
 
+# Local raw store assets
+store_assets/raw/
+
