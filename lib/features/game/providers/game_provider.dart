@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twenty48/core/services/daily_challenge_service.dart';
+import 'package:twenty48/core/services/stats_service.dart';
 import '../models/tile.dart';
 
 class GameProvider extends ChangeNotifier {
@@ -17,6 +18,8 @@ class GameProvider extends ChangeNotifier {
 
   // Daily Challenge State
   final DailyChallengeService _dailyService;
+  final StatsService _statsService;
+  bool _hasRecordedGame = false;
   int _dailySeed = 0;
   bool _isDailyMode = false;
   bool _dailyCompletedThisGame = false;
@@ -67,9 +70,13 @@ class GameProvider extends ChangeNotifier {
   bool get hasUsedExtraTime => _hasUsedExtraTime;
   bool get isDailyMode => _isDailyMode;
   bool get dailyCompletedThisGame => _dailyCompletedThisGame;
+  StatsService get statsService => _statsService;
 
-  GameProvider({DailyChallengeService? dailyService})
-      : _dailyService = dailyService ?? DailyChallengeService() {
+  GameProvider({
+    DailyChallengeService? dailyService,
+    StatsService? statsService,
+  })  : _dailyService = dailyService ?? DailyChallengeService(),
+        _statsService = statsService ?? StatsService() {
     _loadSettings().then((_) => initGame());
   }
 
@@ -78,6 +85,7 @@ class GameProvider extends ChangeNotifier {
     _isTimerMode = prefs.getBool('isTimerMode') ?? false;
     _targetValue = prefs.getInt('targetValue') ?? 1024;
     _highScore = prefs.getInt('highScore') ?? 0;
+    await _statsService.load();
   }
 
   Future<void> _saveSettings() async {
@@ -121,6 +129,19 @@ class GameProvider extends ChangeNotifier {
     initGame();
   }
 
+  void _checkAndRecordGameEnd({bool targetReached = false}) {
+    if (_hasRecordedGame) return;
+    final int maxTile = _tiles.fold<int>(
+        0, (maxVal, tile) => tile.value > maxVal ? tile.value : maxVal);
+    final int target = _isDailyMode ? _dailyTarget : _targetValue;
+    final bool won = targetReached || maxTile >= target;
+
+    if (targetReached || _isGameOver) {
+      _hasRecordedGame = true;
+      _statsService.recordGameEnd(won: won, highestTile: maxTile);
+    }
+  }
+
   void initGame() {
     if (_isDailyMode) {
       useSeededRandom(_dailySeed);
@@ -128,6 +149,7 @@ class GameProvider extends ChangeNotifier {
     _tiles = [];
     _score = 0;
     _isGameOver = false;
+    _hasRecordedGame = false;
     _isSwapMode = false;
     _firstSelectedTile = null;
     _hasUsedExtraTime = false;
@@ -160,6 +182,7 @@ class GameProvider extends ChangeNotifier {
         notifyListeners();
       } else if (_remainingSeconds <= 0 && !_isGameOver) {
         _isGameOver = true;
+        _checkAndRecordGameEnd();
         _timer?.cancel();
         notifyListeners();
       }
@@ -242,6 +265,9 @@ class GameProvider extends ChangeNotifier {
       _tiles[index2] = _tiles[index2].copyWith(x: pos1x, y: pos1y);
       
       _isGameOver = _calculateGameOver();
+      if (_isGameOver) {
+        _checkAndRecordGameEnd();
+      }
     }
   }
 
@@ -326,6 +352,10 @@ class GameProvider extends ChangeNotifier {
             }
           }
 
+          if (val >= (_isDailyMode ? _dailyTarget : _targetValue)) {
+            _checkAndRecordGameEnd(targetReached: true);
+          }
+
           if (_isDailyMode && val >= _dailyTarget && !_dailyCompletedThisGame) {
             _dailyCompletedThisGame = true;
             _dailyService.markCompleted().catchError((_) => 0);
@@ -405,6 +435,9 @@ class GameProvider extends ChangeNotifier {
       _lastBonusTime = bonusTime; 
       _addNewTile();
       _isGameOver = _isGameOver || _calculateGameOver();
+      if (_isGameOver) {
+        _checkAndRecordGameEnd();
+      }
       notifyListeners();
       
       // Clean up deleting tiles after animation finishes

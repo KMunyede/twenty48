@@ -8,6 +8,8 @@ import '../../game/providers/game_provider.dart';
 import '../../../core/update/update_service.dart';
 import 'ads_setting_tile.dart';
 import 'feedback_tile.dart';
+import 'stats_tile.dart';
+import '../../onboarding/how_to_play_tile.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -62,6 +64,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const HowToPlayTile(),
+                          Divider(
+                            color: theme.textColor.withValues(alpha: 0.3),
+                          ),
+                          const StatsTile(),
+                          Divider(
+                            color: theme.textColor.withValues(alpha: 0.3),
+                          ),
                           Text(
                             'Game Mode:',
                             style: TextStyle(

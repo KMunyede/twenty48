@@ -119,4 +119,14 @@ class DailyChallengeService {
       return 1;
     }
   }
+
+  Future<int> bestStreak() async {
+    try {
+      final prefs = await _prefs();
+      if (prefs == null) return 0;
+      return prefs.getInt('dailyBestStreak') ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 }

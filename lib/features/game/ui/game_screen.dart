@@ -12,6 +12,8 @@ import '../../../core/update/update_service.dart';
 import '../providers/game_provider.dart';
 import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
+import '../../onboarding/how_to_play_dialog.dart';
+import '../../onboarding/how_to_play_service.dart';
 import 'widgets/tile_widget.dart';
 
 class GameScreen extends StatefulWidget {
@@ -54,7 +56,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         _focusNode.requestFocus();
       }
       UpdateService().checkOnLaunch();
+      _checkHowToPlay();
     });
+  }
+
+  Future<void> _checkHowToPlay() async {
+    final howToPlayService = HowToPlayService();
+    final hasSeen = await howToPlayService.hasSeen();
+    if (!hasSeen && mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) => const HowToPlayDialog(),
+      );
+      await howToPlayService.markSeen();
+    }
   }
 
   @override
