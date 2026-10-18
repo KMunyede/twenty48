@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/ad_service.dart';
 import '../../core/theme/contrast_text.dart';
+import 'consent_link_style.dart';
 import 'consent_service.dart';
 import 'consent_texts.dart';
 
@@ -85,7 +86,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
     final primaryText = readableTextOn(bgColor);
     final titleColor = primaryText;
     final bodyColor = primaryText == Colors.white ? Colors.white70 : Colors.black54;
-    final linkColor = primaryText == Colors.white ? const Color(0xFFA5D6A7) : const Color(0xFF1B5E20);
+    final linkColor = primaryText == Colors.white ? kConsentLinkDarkBgColor : kConsentLinkLightBgColor;
 
     return PopScope(
       canPop: false,

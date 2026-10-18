@@ -7,6 +7,7 @@ import '../providers/theme_provider.dart';
 import '../../game/providers/game_provider.dart';
 import '../../../core/update/update_service.dart';
 import 'ads_setting_tile.dart';
+import 'feedback_tile.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -170,6 +171,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             },
                           ),
                           const AdsSettingTile(),
+                          const FeedbackTile(),
                         ],
                       ),
                     ),

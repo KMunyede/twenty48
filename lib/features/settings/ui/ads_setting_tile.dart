@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:twenty48/features/consent/consent_link_style.dart';
 import 'package:twenty48/features/consent/consent_service.dart';
 import 'package:twenty48/features/consent/consent_texts.dart';
 import 'package:twenty48/core/services/ad_service.dart';
@@ -83,8 +84,8 @@ class _AdsSettingTileState extends State<AdsSettingTile> {
         final primaryText = theme.textColor;
         final bodyColor = primaryText.withValues(alpha: 0.8);
         final linkColor = primaryText == Colors.white
-            ? const Color(0xFFA5D6A7)
-            : const Color(0xFF1B5E20);
+            ? kConsentLinkDarkBgColor
+            : kConsentLinkLightBgColor;
 
         return AlertDialog(
           backgroundColor: theme.backgroundColor,
@@ -165,8 +166,8 @@ class _AdsSettingTileState extends State<AdsSettingTile> {
             )
           : Switch(
               value: _adsEnabled,
-              activeThumbColor: Colors.deepOrange,
-              activeTrackColor: Colors.deepOrange.withValues(alpha: 0.5),
+              activeThumbColor: const Color(0xFFE65100),
+              activeTrackColor: const Color(0xFFE65100).withValues(alpha: 0.5),
               onChanged: (value) async {
                 if (value) {
                   _showConsentDialog(context);
