@@ -76,7 +76,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     } else if (game.isTimerMode &&
         game.remainingSeconds <= 0 &&
         !game.hasUsedExtraTime &&
-        !_isShowingExtraTimeDialog) {
+        !_isShowingExtraTimeDialog &&
+        AdService.instance.adsEnabled) {
       _isShowingExtraTimeDialog = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -730,7 +731,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           _buildControlButton(
             onPressed: () {
               if (game.needsUndoAd) {
-                if (game.canOfferUndoAd) {
+                if (!AdService.instance.adsEnabled) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('No undos left'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else if (game.canOfferUndoAd) {
                   _showRewardedUndoDialog(context, game);
                 } else {
                   _showMaxUndoRefillsReachedDialog(context);

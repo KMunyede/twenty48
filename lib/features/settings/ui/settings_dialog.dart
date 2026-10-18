@@ -6,6 +6,7 @@ import '../models/app_theme.dart';
 import '../providers/theme_provider.dart';
 import '../../game/providers/game_provider.dart';
 import '../../../core/update/update_service.dart';
+import 'ads_setting_tile.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -168,6 +169,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                               );
                             },
                           ),
+                          const AdsSettingTile(),
                         ],
                       ),
                     ),
