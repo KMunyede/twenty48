@@ -152,8 +152,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               levelName: levelName,
               canUndo: game.canUndo && game.undoCharges > 0,
               onNewGame: () {
+                final moves = game.moveCount;
                 game.initGame();
-                AdService.instance.showInterstitialIfReady();
+                AdService.instance.showInterstitialIfReady(movesMade: moves);
                 _hasShownGameOverDialog = false;
                 Navigator.of(ctx).pop();
               },
@@ -824,8 +825,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             SizedBox(height: isExtraLarge ? 24 : 12),
           _buildControlButton(
             onPressed: () {
+              final moves = game.moveCount;
               game.initGame();
-              AdService.instance.showInterstitialIfReady();
+              AdService.instance.showInterstitialIfReady(movesMade: moves);
             },
             icon: Icons.refresh,
             label: 'New',

@@ -3,9 +3,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'ad_frequency_policy.dart';
 
 class AdService {
-  AdService._();
+  final AdFrequencyPolicy frequencyPolicy;
+
+  AdService._({AdFrequencyPolicy? frequencyPolicy})
+      : frequencyPolicy = frequencyPolicy ?? AdFrequencyPolicy();
+
   static final AdService instance = AdService._();
 
   bool _adsEnabled = false;
@@ -54,8 +59,6 @@ class AdService {
 
   InterstitialAd? _interstitialAd;
   bool _isLoadingInterstitial = false;
-  DateTime? _lastInterstitialTime;
-  static const Duration _interstitialCooldown = Duration(minutes: 2);
 
   RewardedAd? _rewardedAd;
   bool _isLoadingRewarded = false;
@@ -135,13 +138,13 @@ class AdService {
     );
   }
 
-  void showInterstitialIfReady() {
+  void showInterstitialIfReady({required int movesMade}) {
+    frequencyPolicy.onGameFinished(movesMade);
+
     if (!_adsEnabled || !isSupported) return;
 
-    final now = DateTime.now();
-    if (_lastInterstitialTime != null &&
-        now.difference(_lastInterstitialTime!) < _interstitialCooldown) {
-      debugPrint('Interstitial ad on cooldown');
+    if (!frequencyPolicy.shouldShowInterstitial()) {
+      debugPrint('Interstitial ad blocked by frequency policy');
       return;
     }
 
@@ -154,7 +157,7 @@ class AdService {
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _interstitialAd = null;
-        _lastInterstitialTime = DateTime.now();
+        frequencyPolicy.onInterstitialShown();
         loadInterstitial();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
@@ -207,6 +210,7 @@ class AdService {
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _rewardedAd = null;
+        frequencyPolicy.onRewardedShown();
         loadRewarded();
         if (!userEarnedReward) {
           onUnavailable();
@@ -224,6 +228,7 @@ class AdService {
     _rewardedAd!.show(
       onUserEarnedReward: (ad, reward) {
         userEarnedReward = true;
+        frequencyPolicy.onRewardedShown();
         onReward();
       },
     );
