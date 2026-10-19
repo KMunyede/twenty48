@@ -23,7 +23,7 @@ class _HowToPlayDialogState extends State<HowToPlayDialog> {
     _PageData(
       title: 'Reach the target',
       description:
-          'Keep merging tiles to build higher numbers. Reach the target tile (1024 or 2048) to win the challenge!',
+          'Build up to the GOAL shown above the board. The bar fills as you get closer.',
       icon: Icons.emoji_events,
     ),
     _PageData(

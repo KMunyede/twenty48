@@ -14,6 +14,8 @@ import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
 import '../../onboarding/how_to_play_dialog.dart';
 import '../../onboarding/how_to_play_service.dart';
+import '../../onboarding/help_button.dart';
+import '../hud/goal_hud.dart';
 import 'widgets/tile_widget.dart';
 
 class GameScreen extends StatefulWidget {
@@ -172,6 +174,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               scrolledUnderElevation: 0,
               surfaceTintColor: Colors.transparent,
               toolbarHeight: 48,
+              leadingWidth: 90,
+              leading: const HelpButton(),
               actions: [
                 IconButton(
                   icon: Icon(Icons.settings, color: theme.textColor),
@@ -207,13 +211,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           child: Column(
             children: [
               _buildHeader(context),
-              const SizedBox(height: 16),
               if (game.isTimerMode) ...[
+                const SizedBox(height: 12),
                 _buildTimer(context, game),
-                const SizedBox(height: 16),
+              ] else ...[
+                const SizedBox(height: 4),
+                const GoalHud(),
               ],
-              Expanded(child: Center(child: _buildAnimatedGameBoard())),
-              const SizedBox(height: 16),
+              const Spacer(),
+              _buildAnimatedGameBoard(),
+              const SizedBox(height: 12),
               _buildControls(context),
               const SizedBox(height: 16),
               const AdBannerWidget(),
@@ -844,7 +851,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }) {
     return SizedBox(
       width: size,
-      height: size,
+      height: size * 0.75,
       child: ElevatedButton(
         focusNode: FocusNode(skipTraversal: true),
         onPressed: onPressed,
@@ -854,20 +861,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           disabledBackgroundColor: theme.scoreTileColor.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: iconSize),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: fontSize,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: iconSize),
+              const SizedBox(height: 1),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: fontSize,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

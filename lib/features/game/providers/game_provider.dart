@@ -24,6 +24,7 @@ class GameProvider extends ChangeNotifier {
   bool _isDailyMode = false;
   bool _dailyCompletedThisGame = false;
   static const int _dailyTarget = 2048;
+  int _moveCount = 0;
 
   // Timer Challenge State
   bool _isTimerMode = false;
@@ -64,6 +65,13 @@ class GameProvider extends ChangeNotifier {
   bool get isTimerMode => _isTimerMode;
   int get remainingSeconds => _remainingSeconds;
   int get targetValue => _targetValue;
+  int get currentGameTarget => _isDailyMode ? _dailyTarget : _targetValue;
+  int get target => currentGameTarget;
+  int get moveCount => _moveCount;
+  int get highestTile {
+    if (_tiles.isEmpty) return 0;
+    return _tiles.fold<int>(0, (maxVal, tile) => tile.value > maxVal ? tile.value : maxVal);
+  }
   int get lastBonusTime => _lastBonusTime;
   bool get shouldCelebrate => _shouldCelebrate;
   int get celebrationId => _celebrationId;
@@ -148,6 +156,7 @@ class GameProvider extends ChangeNotifier {
     }
     _tiles = [];
     _score = 0;
+    _moveCount = 0;
     _isGameOver = false;
     _hasRecordedGame = false;
     _isSwapMode = false;
@@ -282,6 +291,7 @@ class GameProvider extends ChangeNotifier {
     _tiles = _tilesHistory.removeLast();
     _score = _scoreHistory.removeLast();
     _remainingSeconds = _timerHistory.removeLast();
+    if (_moveCount > 0) _moveCount--;
     _isGameOver = _calculateGameOver(); // Recalculate in case we undo a loss
     _undoCharges--;
     notifyListeners();
@@ -421,6 +431,7 @@ class GameProvider extends ChangeNotifier {
       // Non-merging tiles move instantly to their target.
       // Merging tiles move to the same target, then one disappears and the other "pops".
       
+      _moveCount++;
       _tilesHistory.add(currentTiles);
       _scoreHistory.add(currentScore);
       _timerHistory.add(currentTimer);
