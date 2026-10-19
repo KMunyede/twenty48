@@ -17,6 +17,7 @@ import '../../onboarding/how_to_play_service.dart';
 import '../../onboarding/help_button.dart';
 import '../hud/goal_hud.dart';
 import 'widgets/tile_widget.dart';
+import 'win_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -34,6 +35,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   double _totalDx = 0;
   double _totalDy = 0;
   bool _isShowingExtraTimeDialog = false;
+  bool _isShowingWinDialog = false;
 
   @override
   void initState() {
@@ -99,6 +101,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _showExtraTimeDialog(context, game);
+        }
+      });
+    }
+
+    if (!game.winPromptPending) {
+      _isShowingWinDialog = false;
+    } else if (game.winPromptPending && !_isShowingWinDialog) {
+      _isShowingWinDialog = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => const WinDialog(),
+          );
         }
       });
     }

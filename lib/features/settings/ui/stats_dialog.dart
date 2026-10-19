@@ -87,6 +87,11 @@ class _StatsDialogState extends State<StatsDialog> {
                 Column(
                   children: [
                     _buildStatRow(
+                      'Rank',
+                      gameProvider.currentLevel.name,
+                      theme,
+                    ),
+                    _buildStatRow(
                       'Games played',
                       '${_statsService.gamesPlayed}',
                       theme,

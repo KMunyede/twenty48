@@ -23,7 +23,7 @@ class _HowToPlayDialogState extends State<HowToPlayDialog> {
     _PageData(
       title: 'Reach the target',
       description:
-          'Build up to the GOAL shown above the board. The bar fills as you get closer.',
+          'Reach the goal tile to win! Choose Next level, Keep going, or New game. Higher levels start with a bonus tile and you earn +1 Undo for levelling up.',
       icon: Icons.emoji_events,
     ),
     _PageData(

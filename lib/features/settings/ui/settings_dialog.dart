@@ -30,6 +30,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
+    final game = context.watch<GameProvider>();
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -83,7 +84,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           _buildModeTile(
                             context,
                             'Normal Mode',
-                            'Standard 2048 gameplay',
+                            'Level: ${game.currentLevel.name} (Goal ${game.currentLevel.target})',
                             Icons.videogame_asset,
                             () =>
                                 context.read<GameProvider>().setStandardMode(),

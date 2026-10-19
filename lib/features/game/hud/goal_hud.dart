@@ -35,15 +35,22 @@ class GoalHud extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'GOAL $target',
-                    style: TextStyle(
-                      color: theme.textColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      letterSpacing: 1.1,
+                  Expanded(
+                    child: Text(
+                      game.isDailyMode
+                          ? 'DAILY GOAL $target'
+                          : '${game.currentLevel.name} - Goal $target',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: theme.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     '${(fraction * 100).toInt()}%',
                     style: TextStyle(

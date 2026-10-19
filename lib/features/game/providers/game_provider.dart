@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twenty48/core/services/daily_challenge_service.dart';
 import 'package:twenty48/core/services/stats_service.dart';
+import 'package:twenty48/features/game/levels/level_ladder.dart';
+import 'package:twenty48/features/game/levels/level_service.dart';
 import '../models/tile.dart';
 
 class GameProvider extends ChangeNotifier {
@@ -19,12 +21,17 @@ class GameProvider extends ChangeNotifier {
   // Daily Challenge State
   final DailyChallengeService _dailyService;
   final StatsService _statsService;
+  final LevelService _levelService;
   bool _hasRecordedGame = false;
   int _dailySeed = 0;
   bool _isDailyMode = false;
   bool _dailyCompletedThisGame = false;
   static const int _dailyTarget = 2048;
   int _moveCount = 0;
+
+  // Level Ladder State
+  bool _winPromptPending = false;
+  bool _winPromptShownThisGame = false;
 
   // Timer Challenge State
   bool _isTimerMode = false;
@@ -79,12 +86,17 @@ class GameProvider extends ChangeNotifier {
   bool get isDailyMode => _isDailyMode;
   bool get dailyCompletedThisGame => _dailyCompletedThisGame;
   StatsService get statsService => _statsService;
+  LevelService get levelService => _levelService;
+  bool get winPromptPending => _winPromptPending;
+  Level get currentLevel => Level.byIndex(_levelService.currentLevel);
 
   GameProvider({
     DailyChallengeService? dailyService,
     StatsService? statsService,
+    LevelService? levelService,
   })  : _dailyService = dailyService ?? DailyChallengeService(),
-        _statsService = statsService ?? StatsService() {
+        _statsService = statsService ?? StatsService(),
+        _levelService = levelService ?? LevelService() {
     _loadSettings().then((_) => initGame());
   }
 
@@ -94,6 +106,10 @@ class GameProvider extends ChangeNotifier {
     _targetValue = prefs.getInt('targetValue') ?? 1024;
     _highScore = prefs.getInt('highScore') ?? 0;
     await _statsService.load();
+    await _levelService.load();
+    if (!_isTimerMode && !_isDailyMode) {
+      _targetValue = Level.byIndex(_levelService.currentLevel).target;
+    }
   }
 
   Future<void> _saveSettings() async {
@@ -133,8 +149,25 @@ class GameProvider extends ChangeNotifier {
     _isDailyMode = false;
     useDefaultRandom();
     _isTimerMode = false;
+    _targetValue = Level.byIndex(_levelService.currentLevel).target;
     _saveSettings();
     initGame();
+  }
+
+  void continueAfterWin() {
+    _winPromptPending = false;
+    notifyListeners();
+  }
+
+  Future<void> advanceToNextLevel() async {
+    final next = Level.next(_levelService.currentLevel);
+    if (next != null) {
+      await _levelService.saveLevel(next.index);
+    }
+    _winPromptPending = false;
+    initGame();
+    _undoCharges = min(_undoCharges + 1, 10);
+    notifyListeners();
   }
 
   void _checkAndRecordGameEnd({bool targetReached = false}) {
@@ -154,6 +187,9 @@ class GameProvider extends ChangeNotifier {
     if (_isDailyMode) {
       useSeededRandom(_dailySeed);
     }
+    if (!_isTimerMode && !_isDailyMode) {
+      _targetValue = Level.byIndex(_levelService.currentLevel).target;
+    }
     _tiles = [];
     _score = 0;
     _moveCount = 0;
@@ -164,6 +200,8 @@ class GameProvider extends ChangeNotifier {
     _hasUsedExtraTime = false;
     _undoCharges = initialUndoCharges;
     _undoRefillsUsed = 0;
+    _winPromptPending = false;
+    _winPromptShownThisGame = false;
     _tilesHistory.clear();
     _scoreHistory.clear();
     _timerHistory.clear();
@@ -179,6 +217,12 @@ class GameProvider extends ChangeNotifier {
     Future.delayed(const Duration(milliseconds: 50), () {
       _addNewTile();
       _addNewTile();
+      if (!_isTimerMode && !_isDailyMode) {
+        final level = Level.byIndex(_levelService.currentLevel);
+        if (level.headStart > 0) {
+          _addSpecificTile(level.headStart);
+        }
+      }
       notifyListeners();
     });
   }
@@ -220,6 +264,27 @@ class GameProvider extends ChangeNotifier {
         x: pos.x,
         y: pos.y,
         value: _rng.nextInt(10) == 0 ? 4 : 2,
+        isNew: true,
+      ));
+    }
+  }
+
+  void _addSpecificTile(int val) {
+    final emptyPositions = <Point<int>>[];
+    for (int x = 0; x < gridSize; x++) {
+      for (int y = 0; y < gridSize; y++) {
+        if (!_tiles.any((t) => t.x == x && t.y == y)) {
+          emptyPositions.add(Point(x, y));
+        }
+      }
+    }
+
+    if (emptyPositions.isNotEmpty) {
+      final pos = emptyPositions[_rng.nextInt(emptyPositions.length)];
+      _tiles.add(Tile(
+        x: pos.x,
+        y: pos.y,
+        value: val,
         isNew: true,
       ));
     }
@@ -364,6 +429,11 @@ class GameProvider extends ChangeNotifier {
 
           if (val >= (_isDailyMode ? _dailyTarget : _targetValue)) {
             _checkAndRecordGameEnd(targetReached: true);
+          }
+
+          if (!_isTimerMode && !_isDailyMode && val >= _targetValue && !_winPromptShownThisGame) {
+            _winPromptShownThisGame = true;
+            _winPromptPending = true;
           }
 
           if (_isDailyMode && val >= _dailyTarget && !_dailyCompletedThisGame) {
