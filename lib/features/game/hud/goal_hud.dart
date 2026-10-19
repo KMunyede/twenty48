@@ -39,7 +39,7 @@ class GoalHud extends StatelessWidget {
                     child: Text(
                       game.isDailyMode
                           ? 'DAILY GOAL $target'
-                          : '${game.currentLevel.name} - Goal $target',
+                          : '${game.currentLevel.name} - GOAL $target',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

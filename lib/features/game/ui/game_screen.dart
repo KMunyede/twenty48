@@ -18,6 +18,7 @@ import '../../onboarding/help_button.dart';
 import '../hud/goal_hud.dart';
 import 'widgets/tile_widget.dart';
 import 'win_dialog.dart';
+import 'game_over_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -36,6 +37,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   double _totalDy = 0;
   bool _isShowingExtraTimeDialog = false;
   bool _isShowingWinDialog = false;
+  bool _hasShownGameOverDialog = false;
 
   @override
   void initState() {
@@ -115,6 +117,57 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             context: context,
             barrierDismissible: false,
             builder: (ctx) => const WinDialog(),
+          );
+        }
+      });
+    }
+
+    if (!game.isGameOver) {
+      _hasShownGameOverDialog = false;
+    } else if (game.isGameOver &&
+        !_hasShownGameOverDialog &&
+        !game.winPromptPending &&
+        !_isShowingWinDialog) {
+      _hasShownGameOverDialog = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final title = game.isTimerMode && game.remainingSeconds <= 0
+              ? 'Time Up!'
+              : 'Game Over!';
+          final message = game.isTimerMode && game.remainingSeconds <= 0
+              ? 'You ran out of time.'
+              : 'No more moves';
+          final levelName = !game.isTimerMode && !game.isDailyMode
+              ? game.currentLevel.name
+              : null;
+
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => GameOverDialog(
+              title: title,
+              message: message,
+              score: game.score,
+              bestScore: game.highScore,
+              levelName: levelName,
+              canUndo: game.canUndo && game.undoCharges > 0,
+              onNewGame: () {
+                game.initGame();
+                AdService.instance.showInterstitialIfReady();
+                _hasShownGameOverDialog = false;
+                Navigator.of(ctx).pop();
+              },
+              onUndo: game.canUndo && game.undoCharges > 0
+                  ? () {
+                      game.undo();
+                      _hasShownGameOverDialog = false;
+                      Navigator.of(ctx).pop();
+                    }
+                  : null,
+              onViewBoard: () {
+                Navigator.of(ctx).pop();
+              },
+            ),
           );
         }
       });
@@ -700,49 +753,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         );
                       }).toList(),
                     ),
-                    if (game.isGameOver)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Game Over!',
-                                style: TextStyle(
-                                  fontSize: size * 0.12,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.textColor,
-                                ),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  game.initGame();
-                                  AdService.instance.showInterstitialIfReady();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: theme.scoreTileColor,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 12,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Play Again',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
