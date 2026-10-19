@@ -19,7 +19,7 @@ class AdService {
   final Completer<void> _initCompleter = Completer<void>();
   Future<void> get ready => _initCompleter.future;
 
-  bool get isSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+  bool get isSupported => !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.environment.containsKey('FLUTTER_TEST'));
 
   // Test Ad Unit IDs - REPLACE BEFORE RELEASE
   String get _bannerAdUnitId {
@@ -94,7 +94,7 @@ class AdService {
   }
 
   Future<void> init() async {
-    if (!isSupported) {
+    if (!isSupported || Platform.environment.containsKey('FLUTTER_TEST')) {
       if (!_initCompleter.isCompleted) _initCompleter.complete();
       return;
     }

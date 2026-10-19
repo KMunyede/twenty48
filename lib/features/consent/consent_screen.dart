@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/ad_service.dart';
+import '../../core/services/ump_consent_service.dart';
 import '../../core/theme/contrast_text.dart';
 import 'consent_link_style.dart';
 import 'consent_service.dart';
@@ -11,13 +12,16 @@ import 'consent_texts.dart';
 
 class ConsentScreen extends StatefulWidget {
   final ConsentService consentService;
+  final UmpConsentService umpConsentService;
   final ValueChanged<bool> onDecision;
 
   ConsentScreen({
     super.key,
     ConsentService? consentService,
+    UmpConsentService? umpConsentService,
     required this.onDecision,
-  }) : consentService = consentService ?? ConsentService();
+  })  : consentService = consentService ?? ConsentService(),
+        umpConsentService = umpConsentService ?? const UmpConsentService();
 
   @override
   State<ConsentScreen> createState() => _ConsentScreenState();
@@ -45,7 +49,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
     await widget.consentService.save(agreed);
 
     if (agreed) {
-      _enableAdsSafely();
+      final canRequest = await widget.umpConsentService.gatherConsent();
+      if (canRequest) {
+        _enableAdsSafely();
+      }
     }
 
     if (mounted) {

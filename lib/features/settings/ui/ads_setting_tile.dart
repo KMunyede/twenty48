@@ -7,12 +7,14 @@ import 'package:twenty48/features/consent/consent_link_style.dart';
 import 'package:twenty48/features/consent/consent_service.dart';
 import 'package:twenty48/features/consent/consent_texts.dart';
 import 'package:twenty48/core/services/ad_service.dart';
+import 'package:twenty48/core/services/ump_consent_service.dart';
 import 'package:twenty48/features/settings/providers/theme_provider.dart';
 
 class AdsSettingTile extends StatefulWidget {
   final ConsentService? consentService;
+  final UmpConsentService? umpConsentService;
 
-  const AdsSettingTile({super.key, this.consentService});
+  const AdsSettingTile({super.key, this.consentService, this.umpConsentService});
 
   @override
   State<AdsSettingTile> createState() => _AdsSettingTileState();
@@ -20,6 +22,7 @@ class AdsSettingTile extends StatefulWidget {
 
 class _AdsSettingTileState extends State<AdsSettingTile> {
   late final ConsentService _consentService;
+  late final UmpConsentService _umpConsentService;
   bool _adsEnabled = false;
   bool _isLoading = true;
 
@@ -27,6 +30,7 @@ class _AdsSettingTileState extends State<AdsSettingTile> {
   void initState() {
     super.initState();
     _consentService = widget.consentService ?? ConsentService();
+    _umpConsentService = widget.umpConsentService ?? const UmpConsentService();
     _loadConsentState();
     AdService.instance.adsEnabledListenable.addListener(_onAdsEnabledChanged);
   }
@@ -132,11 +136,21 @@ class _AdsSettingTileState extends State<AdsSettingTile> {
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
                 await _consentService.save(true);
-                await AdService.instance.enableAds();
-                if (mounted) {
-                  setState(() {
-                    _adsEnabled = true;
-                  });
+                final canRequest = await _umpConsentService.gatherConsent();
+                if (canRequest) {
+                  await AdService.instance.enableAds();
+                  if (mounted) {
+                    setState(() {
+                      _adsEnabled = true;
+                    });
+                  }
+                } else {
+                  AdService.instance.disableAds();
+                  if (mounted) {
+                    setState(() {
+                      _adsEnabled = false;
+                    });
+                  }
                 }
               },
               child: const Text('I agree'),
@@ -151,28 +165,59 @@ class _AdsSettingTileState extends State<AdsSettingTile> {
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
 
-    return ListTile(
-      leading: Icon(Icons.ad_units, color: theme.textColor),
-      title: Text('Ads', style: TextStyle(color: theme.textColor)),
-      subtitle: Text(
-        'Show ads and optional ad rewards',
-        style: TextStyle(color: theme.textColor.withValues(alpha: 0.7)),
-      ),
-      trailing: _isLoading
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Switch(
-              value: _adsEnabled,
-              activeThumbColor: const Color(0xFFE65100),
-              activeTrackColor: const Color(0xFFE65100).withValues(alpha: 0.5),
-              onChanged: (value) async {
-                if (value) {
-                  _showConsentDialog(context);
-                } else {
-                  await _consentService.save(false);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          leading: Icon(Icons.ad_units, color: theme.textColor),
+          title: Text('Ads', style: TextStyle(color: theme.textColor)),
+          subtitle: Text(
+            'Show ads and optional ad rewards',
+            style: TextStyle(color: theme.textColor.withValues(alpha: 0.7)),
+          ),
+          trailing: _isLoading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Switch(
+                  value: _adsEnabled,
+                  activeThumbColor: const Color(0xFFE65100),
+                  activeTrackColor: const Color(0xFFE65100).withValues(alpha: 0.5),
+                  onChanged: (value) async {
+                    if (value) {
+                      _showConsentDialog(context);
+                    } else {
+                      await _consentService.save(false);
+                      AdService.instance.disableAds();
+                      if (mounted) {
+                        setState(() {
+                          _adsEnabled = false;
+                        });
+                      }
+                    }
+                  },
+                ),
+        ),
+        FutureBuilder<bool>(
+          future: _umpConsentService.privacyOptionsRequired(),
+          builder: (context, snapshot) {
+            final required = snapshot.data ?? false;
+            if (!required) return const SizedBox.shrink();
+            return ListTile(
+              leading: Icon(Icons.privacy_tip, color: theme.textColor),
+              title: Text('Privacy choices', style: TextStyle(color: theme.textColor)),
+              subtitle: Text(
+                'Review your ad consent',
+                style: TextStyle(color: theme.textColor.withValues(alpha: 0.7)),
+              ),
+              onTap: () async {
+                await _umpConsentService.showPrivacyOptions();
+                final canRequest = await _umpConsentService.gatherConsent();
+                if (canRequest && _adsEnabled) {
+                  await AdService.instance.enableAds();
+                } else if (!canRequest) {
                   AdService.instance.disableAds();
                   if (mounted) {
                     setState(() {
@@ -181,7 +226,10 @@ class _AdsSettingTileState extends State<AdsSettingTile> {
                   }
                 }
               },
-            ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

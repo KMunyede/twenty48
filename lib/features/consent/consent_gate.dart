@@ -3,17 +3,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/services/ad_service.dart';
+import '../../core/services/ump_consent_service.dart';
 import 'consent_screen.dart';
 import 'consent_service.dart';
 
 class ConsentGate extends StatefulWidget {
   final Widget child;
   final ConsentService? consentService;
+  final UmpConsentService? umpConsentService;
 
   const ConsentGate({
     super.key,
     required this.child,
     this.consentService,
+    this.umpConsentService,
   });
 
   @override
@@ -22,12 +25,14 @@ class ConsentGate extends StatefulWidget {
 
 class _ConsentGateState extends State<ConsentGate> {
   late final ConsentService _consentService;
+  late final UmpConsentService _umpConsentService;
   ConsentStatus? _status;
 
   @override
   void initState() {
     super.initState();
     _consentService = widget.consentService ?? ConsentService();
+    _umpConsentService = widget.umpConsentService ?? const UmpConsentService();
     _checkConsent();
   }
 
@@ -36,7 +41,10 @@ class _ConsentGateState extends State<ConsentGate> {
     if (!mounted) return;
 
     if (status == ConsentStatus.agreed) {
-      _enableAdsSafely();
+      final canRequest = await _umpConsentService.gatherConsent();
+      if (canRequest && mounted) {
+        _enableAdsSafely();
+      }
     }
 
     setState(() {
@@ -69,6 +77,7 @@ class _ConsentGateState extends State<ConsentGate> {
       case ConsentStatus.needsPrompt:
         return ConsentScreen(
           consentService: _consentService,
+          umpConsentService: _umpConsentService,
           onDecision: (agreed) {
             if (!mounted) return;
             setState(() {
