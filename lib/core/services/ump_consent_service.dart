@@ -79,6 +79,7 @@ class UmpConsentService {
     }
     try {
       await ConsentForm.showPrivacyOptionsForm((FormError? error) {});
+      // ignore: empty_catches
     } catch (e) {}
   }
 }
