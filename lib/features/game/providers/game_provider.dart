@@ -60,6 +60,7 @@ class GameProvider extends ChangeNotifier {
   bool _hasUsedExtraTime = false;
 
   List<Tile> get tiles => _tiles;
+  Iterable<Tile> get _liveTiles => _tiles.where((t) => !t.isDeleting);
   int get score => _score;
   int get highScore => _highScore;
   bool get isGameOver => _timerWon || (_isTimerMode && _remainingSeconds <= 0) || _hasNoLegalMove();
@@ -264,7 +265,7 @@ class GameProvider extends ChangeNotifier {
     final emptyPositions = <Point<int>>[];
     for (int x = 0; x < gridSize; x++) {
       for (int y = 0; y < gridSize; y++) {
-        if (!_tiles.any((t) => t.x == x && t.y == y)) {
+        if (!_liveTiles.any((t) => t.x == x && t.y == y)) {
           emptyPositions.add(Point(x, y));
         }
       }
@@ -290,7 +291,7 @@ class GameProvider extends ChangeNotifier {
     final emptyPositions = <Point<int>>[];
     for (int x = 0; x < gridSize; x++) {
       for (int y = 0; y < gridSize; y++) {
-        if (!_tiles.any((t) => t.x == x && t.y == y)) {
+        if (!_liveTiles.any((t) => t.x == x && t.y == y)) {
           emptyPositions.add(Point(x, y));
         }
       }
@@ -339,13 +340,14 @@ class GameProvider extends ChangeNotifier {
 
   void _performSwap(Tile t1, Tile t2) {
     if (_timerWon || (_isTimerMode && _remainingSeconds <= 0)) return;
+    if (t1.isDeleting || t2.isDeleting) return;
 
     if (kDebugMode) {
       debugPrint('G78 swap start ${_logSummary()}');
     }
 
     // Save state for undo
-    _tilesHistory.add(_tiles.map((t) => t.copyWith()).toList());
+    _tilesHistory.add(_liveTiles.map((t) => t.copyWith()).toList());
     _scoreHistory.add(_score);
     _timerHistory.add(_remainingSeconds);
     if (_tilesHistory.length > 10) {
@@ -427,12 +429,14 @@ class GameProvider extends ChangeNotifier {
   bool _move(int dx, int dy) {
     if (isGameOver || _isSwapMode) return false; // Disable moves while swapping
 
+    _tiles.removeWhere((t) => t.isDeleting);
+
     if (kDebugMode) {
       debugPrint('G78 move start ${_logSummary()}');
     }
 
     // Save current state for undo
-    final currentTiles = _tiles.map((t) => t.copyWith()).toList();
+    final currentTiles = _liveTiles.map((t) => t.copyWith()).toList();
     final currentScore = _score;
     final currentTimer = _remainingSeconds;
 
@@ -605,14 +609,15 @@ class GameProvider extends ChangeNotifier {
   }
 
   bool _hasNoLegalMove() {
-    if (_tiles.length < gridSize * gridSize) return false;
+    final occupiedSquares = _liveTiles.map((t) => Point(t.x, t.y)).toSet();
+    if (occupiedSquares.length < gridSize * gridSize) return false;
 
-    for (var tile in _tiles) {
+    for (var tile in _liveTiles) {
       for (var dir in [const Point(0, 1), const Point(0, -1), const Point(1, 0), const Point(-1, 0)]) {
         int nx = tile.x + dir.x;
         int ny = tile.y + dir.y;
         if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
-          if (_tiles.any((t) => t.x == nx && t.y == ny && t.value == tile.value)) {
+          if (_liveTiles.any((t) => t.x == nx && t.y == ny && t.value == tile.value)) {
             return false;
           }
         }
