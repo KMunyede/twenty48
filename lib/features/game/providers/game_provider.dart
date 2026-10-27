@@ -16,7 +16,7 @@ class GameProvider extends ChangeNotifier {
   List<Tile> _tiles = [];
   int _score = 0;
   int _highScore = 0;
-  bool _isGameOver = false;
+  bool _timerWon = false;
 
   // Daily Challenge State
   final DailyChallengeService _dailyService;
@@ -61,7 +61,7 @@ class GameProvider extends ChangeNotifier {
   List<Tile> get tiles => _tiles;
   int get score => _score;
   int get highScore => _highScore;
-  bool get isGameOver => _isGameOver;
+  bool get isGameOver => _timerWon || (_isTimerMode && _remainingSeconds <= 0) || _hasNoLegalMove();
   bool get canUndo => _tilesHistory.isNotEmpty;
   int get undoCharges => _undoCharges;
   bool get needsUndoAd => _undoCharges == 0;
@@ -177,7 +177,7 @@ class GameProvider extends ChangeNotifier {
     final int target = _isDailyMode ? _dailyTarget : _targetValue;
     final bool won = targetReached || maxTile >= target;
 
-    if (targetReached || _isGameOver) {
+    if (targetReached || isGameOver) {
       _hasRecordedGame = true;
       _statsService.recordGameEnd(won: won, highestTile: maxTile);
     }
@@ -193,7 +193,7 @@ class GameProvider extends ChangeNotifier {
     _tiles = [];
     _score = 0;
     _moveCount = 0;
-    _isGameOver = false;
+    _timerWon = false;
     _hasRecordedGame = false;
     _isSwapMode = false;
     _firstSelectedTile = null;
@@ -230,11 +230,10 @@ class GameProvider extends ChangeNotifier {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds > 0 && !_isGameOver) {
+      if (_remainingSeconds > 0 && !isGameOver) {
         _remainingSeconds--;
         notifyListeners();
-      } else if (_remainingSeconds <= 0 && !_isGameOver) {
-        _isGameOver = true;
+      } else if (_remainingSeconds <= 0) {
         _checkAndRecordGameEnd();
         _timer?.cancel();
         notifyListeners();
@@ -316,6 +315,8 @@ class GameProvider extends ChangeNotifier {
   }
 
   void _performSwap(Tile t1, Tile t2) {
+    if (_timerWon || (_isTimerMode && _remainingSeconds <= 0)) return;
+
     // Save state for undo
     _tilesHistory.add(_tiles.map((t) => t.copyWith()).toList());
     _scoreHistory.add(_score);
@@ -338,8 +339,7 @@ class GameProvider extends ChangeNotifier {
       _tiles[index1] = _tiles[index1].copyWith(x: pos2x, y: pos2y);
       _tiles[index2] = _tiles[index2].copyWith(x: pos1x, y: pos1y);
       
-      _isGameOver = _calculateGameOver();
-      if (_isGameOver) {
+      if (isGameOver) {
         _checkAndRecordGameEnd();
       }
     }
@@ -357,7 +357,6 @@ class GameProvider extends ChangeNotifier {
     _score = _scoreHistory.removeLast();
     _remainingSeconds = _timerHistory.removeLast();
     if (_moveCount > 0) _moveCount--;
-    _isGameOver = _calculateGameOver(); // Recalculate in case we undo a loss
     _undoCharges--;
     notifyListeners();
   }
@@ -369,10 +368,10 @@ class GameProvider extends ChangeNotifier {
   }
 
   void addBonusTime(int seconds) {
+    final wasGameOver = isGameOver;
     _remainingSeconds += seconds;
     _hasUsedExtraTime = true;
-    if (_isGameOver && _remainingSeconds > 0) {
-      _isGameOver = false;
+    if (wasGameOver && _remainingSeconds > 0) {
       if (_isTimerMode) {
         _startTimer();
       }
@@ -381,7 +380,7 @@ class GameProvider extends ChangeNotifier {
   }
 
   bool _move(int dx, int dy) {
-    if (_isGameOver || _isSwapMode) return false; // Disable moves while swapping
+    if (isGameOver || _isSwapMode) return false; // Disable moves while swapping
 
     // Save current state for undo
     final currentTiles = _tiles.map((t) => t.copyWith()).toList();
@@ -423,7 +422,7 @@ class GameProvider extends ChangeNotifier {
             else if (val >= 1024) {bonusTime += 40;}
 
             if (val >= _targetValue) {
-              _isGameOver = true; // Win condition in timer mode
+              _timerWon = true; // Win condition in timer mode
             }
           }
 
@@ -515,8 +514,7 @@ class GameProvider extends ChangeNotifier {
       _remainingSeconds += bonusTime;
       _lastBonusTime = bonusTime; 
       _addNewTile();
-      _isGameOver = _isGameOver || _calculateGameOver();
-      if (_isGameOver) {
+      if (isGameOver) {
         _checkAndRecordGameEnd();
       }
       notifyListeners();
@@ -535,7 +533,7 @@ class GameProvider extends ChangeNotifier {
     return false;
   }
 
-  bool _calculateGameOver() {
+  bool _hasNoLegalMove() {
     if (_tiles.length < gridSize * gridSize) return false;
 
     for (var tile in _tiles) {
@@ -550,5 +548,17 @@ class GameProvider extends ChangeNotifier {
       }
     }
     return true;
+  }
+
+  @visibleForTesting
+  void setTilesForTesting(List<Tile> tiles) {
+    _tiles = tiles;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void setRemainingSecondsForTesting(int seconds) {
+    _remainingSeconds = seconds;
+    notifyListeners();
   }
 }
