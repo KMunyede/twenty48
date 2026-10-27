@@ -1,6 +1,7 @@
 // lib/features/game/ui/game_screen.dart
 
 import 'dart:math';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -131,6 +132,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _hasShownGameOverDialog = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
+          if (kDebugMode) {
+            debugPrint('G78 game over dialog shown ${game.logSummary}');
+          }
           final title = game.isTimerMode && game.remainingSeconds <= 0
               ? 'Time Up!'
               : 'Game Over!';
@@ -166,6 +170,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     }
                   : null,
               onViewBoard: () {
+                if (kDebugMode) {
+                  debugPrint('G78 view board tapped ${game.logSummary}');
+                }
                 Navigator.of(ctx).pop();
               },
             ),

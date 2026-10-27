@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twenty48/core/services/daily_challenge_service.dart';
@@ -89,6 +90,13 @@ class GameProvider extends ChangeNotifier {
   LevelService get levelService => _levelService;
   bool get winPromptPending => _winPromptPending;
   Level get currentLevel => Level.byIndex(_levelService.currentLevel);
+
+  String _logSummary() {
+    final tilesStr = _tiles.map((t) => '${t.x},${t.y}=${t.value}').join(' ');
+    return 'score=$_score tiles=${_tiles.length} gameOver=$isGameOver tiles=[$tilesStr]';
+  }
+
+  String get logSummary => _logSummary();
 
   GameProvider({
     DailyChallengeService? dailyService,
@@ -190,7 +198,12 @@ class GameProvider extends ChangeNotifier {
     if (!_isTimerMode && !_isDailyMode) {
       _targetValue = Level.byIndex(_levelService.currentLevel).target;
     }
+    final beforeInitCount = _tiles.length;
     _tiles = [];
+    final afterInitCount = _tiles.length;
+    if (kDebugMode) {
+      debugPrint('G78 initGame tile count before=$beforeInitCount after=$afterInitCount ${_logSummary()}');
+    }
     _score = 0;
     _moveCount = 0;
     _timerWon = false;
@@ -259,12 +272,17 @@ class GameProvider extends ChangeNotifier {
 
     if (emptyPositions.isNotEmpty) {
       final pos = emptyPositions[_rng.nextInt(emptyPositions.length)];
+      final beforeAddCount = _tiles.length;
       _tiles.add(Tile(
         x: pos.x,
         y: pos.y,
         value: _rng.nextInt(10) == 0 ? 4 : 2,
         isNew: true,
       ));
+      final afterAddCount = _tiles.length;
+      if (kDebugMode) {
+        debugPrint('G78 _addNewTile tile count before=$beforeAddCount after=$afterAddCount ${_logSummary()}');
+      }
     }
   }
 
@@ -280,12 +298,17 @@ class GameProvider extends ChangeNotifier {
 
     if (emptyPositions.isNotEmpty) {
       final pos = emptyPositions[_rng.nextInt(emptyPositions.length)];
+      final beforeSpecificCount = _tiles.length;
       _tiles.add(Tile(
         x: pos.x,
         y: pos.y,
         value: val,
         isNew: true,
       ));
+      final afterSpecificCount = _tiles.length;
+      if (kDebugMode) {
+        debugPrint('G78 _addSpecificTile tile count before=$beforeSpecificCount after=$afterSpecificCount ${_logSummary()}');
+      }
     }
   }
 
@@ -317,6 +340,10 @@ class GameProvider extends ChangeNotifier {
   void _performSwap(Tile t1, Tile t2) {
     if (_timerWon || (_isTimerMode && _remainingSeconds <= 0)) return;
 
+    if (kDebugMode) {
+      debugPrint('G78 swap start ${_logSummary()}');
+    }
+
     // Save state for undo
     _tilesHistory.add(_tiles.map((t) => t.copyWith()).toList());
     _scoreHistory.add(_score);
@@ -343,6 +370,10 @@ class GameProvider extends ChangeNotifier {
         _checkAndRecordGameEnd();
       }
     }
+
+    if (kDebugMode) {
+      debugPrint('G78 swap end ${_logSummary()}');
+    }
   }
 
   bool moveLeft() => _move(0, -1);
@@ -353,11 +384,25 @@ class GameProvider extends ChangeNotifier {
   void undo() {
     if (!canUndo || _undoCharges <= 0) return;
 
+    if (kDebugMode) {
+      debugPrint('G78 undo start ${_logSummary()}');
+    }
+
+    final beforeUndoCount = _tiles.length;
     _tiles = _tilesHistory.removeLast();
+    final afterUndoCount = _tiles.length;
+    if (kDebugMode) {
+      debugPrint('G78 undo tile count before=$beforeUndoCount after=$afterUndoCount ${_logSummary()}');
+    }
+
     _score = _scoreHistory.removeLast();
     _remainingSeconds = _timerHistory.removeLast();
     if (_moveCount > 0) _moveCount--;
     _undoCharges--;
+
+    if (kDebugMode) {
+      debugPrint('G78 undo end ${_logSummary()}');
+    }
     notifyListeners();
   }
 
@@ -382,6 +427,10 @@ class GameProvider extends ChangeNotifier {
   bool _move(int dx, int dy) {
     if (isGameOver || _isSwapMode) return false; // Disable moves while swapping
 
+    if (kDebugMode) {
+      debugPrint('G78 move start ${_logSummary()}');
+    }
+
     // Save current state for undo
     final currentTiles = _tiles.map((t) => t.copyWith()).toList();
     final currentScore = _score;
@@ -392,7 +441,12 @@ class GameProvider extends ChangeNotifier {
     int bonusTime = 0;
 
     // Reset merged/new flags from previous turn
+    final beforeResetCount = _tiles.length;
     _tiles = _tiles.map((t) => t.copyWith(isMerged: false, isNew: false)).toList();
+    final afterResetCount = _tiles.length;
+    if (kDebugMode) {
+      debugPrint('G78 _move tile count before=$beforeResetCount after=$afterResetCount ${_logSummary()}');
+    }
 
     for (int i = 0; i < gridSize; i++) {
       // 1. Extract current line (row or column)
@@ -510,25 +564,42 @@ class GameProvider extends ChangeNotifier {
         _timerHistory.removeAt(0);
       }
 
+      final beforeNextTilesCount = _tiles.length;
       _tiles = nextTiles;
+      final afterNextTilesCount = _tiles.length;
+      if (kDebugMode) {
+        debugPrint('G78 _move tile count before=$beforeNextTilesCount after=$afterNextTilesCount ${_logSummary()}');
+      }
+
       _remainingSeconds += bonusTime;
       _lastBonusTime = bonusTime; 
       _addNewTile();
       if (isGameOver) {
         _checkAndRecordGameEnd();
       }
+      if (kDebugMode) {
+        debugPrint('G78 move end ${_logSummary()}');
+      }
       notifyListeners();
       
       // Clean up deleting tiles after animation finishes
       // Increased to 250ms to allow "pop" animations to complete
       Future.delayed(const Duration(milliseconds: 250), () {
+        final beforeCleanupCount = _tiles.length;
         _tiles.removeWhere((t) => t.isDeleting);
         _tiles = _tiles.map((t) => t.copyWith(isMerged: false, isNew: false)).toList();
+        final afterCleanupCount = _tiles.length;
+        if (kDebugMode) {
+          debugPrint('G78 _move tile count before=$beforeCleanupCount after=$afterCleanupCount ${_logSummary()}');
+        }
         _lastBonusTime = 0;
         _shouldCelebrate = false;
         notifyListeners();
       });
       return true;
+    }
+    if (kDebugMode) {
+      debugPrint('G78 move end ${_logSummary()}');
     }
     return false;
   }
@@ -552,7 +623,12 @@ class GameProvider extends ChangeNotifier {
 
   @visibleForTesting
   void setTilesForTesting(List<Tile> tiles) {
+    final beforeTestingCount = _tiles.length;
     _tiles = tiles;
+    final afterTestingCount = _tiles.length;
+    if (kDebugMode) {
+      debugPrint('G78 setTilesForTesting tile count before=$beforeTestingCount after=$afterTestingCount ${_logSummary()}');
+    }
     notifyListeners();
   }
 
