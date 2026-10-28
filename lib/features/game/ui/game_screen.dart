@@ -20,6 +20,7 @@ import '../hud/goal_hud.dart';
 import 'widgets/tile_widget.dart';
 import 'win_dialog.dart';
 import 'game_over_dialog.dart';
+import 'exit_confirm_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -39,6 +40,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _isShowingExtraTimeDialog = false;
   bool _isShowingWinDialog = false;
   bool _hasShownGameOverDialog = false;
+  bool _isShowingExitDialog = false;
 
   @override
   void initState() {
@@ -205,74 +207,91 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           : Brightness.dark,
     );
 
-    return Focus(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: (FocusNode node, KeyEvent event) {
-        if (event is KeyDownEvent || event is KeyRepeatEvent) {
-          final key = event.logicalKey;
-          bool moved = false;
-          bool isGameKey = true;
-
-          if (key == LogicalKeyboardKey.arrowUp ||
-              key == LogicalKeyboardKey.keyW) {
-            moved = game.moveUp();
-          } else if (key == LogicalKeyboardKey.arrowDown ||
-              key == LogicalKeyboardKey.keyS) {
-            moved = game.moveDown();
-          } else if (key == LogicalKeyboardKey.arrowLeft ||
-              key == LogicalKeyboardKey.keyA) {
-            moved = game.moveLeft();
-          } else if (key == LogicalKeyboardKey.arrowRight ||
-              key == LogicalKeyboardKey.keyD) {
-            moved = game.moveRight();
-          } else {
-            isGameKey = false;
-          }
-
-          if (isGameKey) {
-            if (moved) HapticFeedback.lightImpact();
-            return KeyEventResult.handled;
-          }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_isShowingExitDialog) return;
+        _isShowingExitDialog = true;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          barrierDismissible: true,
+          builder: (ctx) => const ExitConfirmDialog(),
+        );
+        _isShowingExitDialog = false;
+        if (shouldExit == true) {
+          SystemNavigator.pop();
         }
-        return KeyEventResult.ignored;
       },
-      child: GestureDetector(
-        onTap: () {
-          _focusNode.requestFocus();
+      child: Focus(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: (FocusNode node, KeyEvent event) {
+          if (event is KeyDownEvent || event is KeyRepeatEvent) {
+            final key = event.logicalKey;
+            bool moved = false;
+            bool isGameKey = true;
+
+            if (key == LogicalKeyboardKey.arrowUp ||
+                key == LogicalKeyboardKey.keyW) {
+              moved = game.moveUp();
+            } else if (key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.keyS) {
+              moved = game.moveDown();
+            } else if (key == LogicalKeyboardKey.arrowLeft ||
+                key == LogicalKeyboardKey.keyA) {
+              moved = game.moveLeft();
+            } else if (key == LogicalKeyboardKey.arrowRight ||
+                key == LogicalKeyboardKey.keyD) {
+              moved = game.moveRight();
+            } else {
+              isGameKey = false;
+            }
+
+            if (isGameKey) {
+              if (moved) HapticFeedback.lightImpact();
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
         },
-        behavior: HitTestBehavior.opaque,
-        child: AnnotatedRegion<SystemUiOverlayStyle>(
-          value: systemUiStyle,
-          child: Scaffold(
-            backgroundColor: theme.backgroundColor,
-            appBar: AppBar(
+        child: GestureDetector(
+          onTap: () {
+            _focusNode.requestFocus();
+          },
+          behavior: HitTestBehavior.opaque,
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: systemUiStyle,
+            child: Scaffold(
               backgroundColor: theme.backgroundColor,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              surfaceTintColor: Colors.transparent,
-              toolbarHeight: 48,
-              leadingWidth: 90,
-              leading: const HelpButton(),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.settings, color: theme.textColor),
-                  onPressed: () => showDialog(
-                    context: context,
-                    builder: (context) => const SettingsDialog(),
+              appBar: AppBar(
+                backgroundColor: theme.backgroundColor,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                surfaceTintColor: Colors.transparent,
+                toolbarHeight: 48,
+                leadingWidth: 90,
+                leading: const HelpButton(),
+                actions: [
+                  IconButton(
+                    icon: Icon(Icons.settings, color: theme.textColor),
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (context) => const SettingsDialog(),
+                    ),
                   ),
+                ],
+              ),
+              body: SafeArea(
+                child: OrientationBuilder(
+                  builder: (context, orientation) {
+                    final bool isLandscape = orientation == Orientation.landscape;
+                    if (isLandscape) {
+                      return _buildLandscapeLayout(context, game);
+                    }
+                    return _buildPortraitLayout(context, game);
+                  },
                 ),
-              ],
-            ),
-            body: SafeArea(
-              child: OrientationBuilder(
-                builder: (context, orientation) {
-                  final bool isLandscape = orientation == Orientation.landscape;
-                  if (isLandscape) {
-                    return _buildLandscapeLayout(context, game);
-                  }
-                  return _buildPortraitLayout(context, game);
-                },
               ),
             ),
           ),
