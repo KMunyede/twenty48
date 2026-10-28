@@ -18,7 +18,6 @@ import '../../onboarding/how_to_play_service.dart';
 import '../../onboarding/help_button.dart';
 import '../hud/goal_hud.dart';
 import 'widgets/tile_widget.dart';
-import 'win_dialog.dart';
 import 'game_over_dialog.dart';
 import 'exit_confirm_dialog.dart';
 
@@ -38,7 +37,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   double _totalDx = 0;
   double _totalDy = 0;
   bool _isShowingExtraTimeDialog = false;
-  bool _isShowingWinDialog = false;
   bool _hasShownGameOverDialog = false;
   bool _isShowingExitDialog = false;
 
@@ -110,27 +108,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
     }
 
-    if (!game.winPromptPending) {
-      _isShowingWinDialog = false;
-    } else if (game.winPromptPending && !_isShowingWinDialog) {
-      _isShowingWinDialog = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => const WinDialog(),
-          );
-        }
-      });
-    }
-
     if (!game.isGameOver) {
       _hasShownGameOverDialog = false;
-    } else if (game.isGameOver &&
-        !_hasShownGameOverDialog &&
-        !game.winPromptPending &&
-        !_isShowingWinDialog) {
+    } else if (game.isGameOver && !_hasShownGameOverDialog) {
       _hasShownGameOverDialog = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {

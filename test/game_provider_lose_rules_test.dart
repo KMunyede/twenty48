@@ -121,7 +121,7 @@ void main() {
       expect(game.isGameOver, isFalse);
     });
 
-    test('i. Timer target reached: isGameOver is true, and win behaviour is unchanged', () async {
+    test('i. Timer target reached: isGameOver is false', () async {
       SharedPreferences.setMockInitialValues({});
       final game = GameProvider();
       await Future.delayed(const Duration(milliseconds: 100));
@@ -137,7 +137,7 @@ void main() {
 
       game.moveLeft();
 
-      expect(game.isGameOver, isTrue);
+      expect(game.isGameOver, isFalse);
     });
   });
 }

@@ -17,8 +17,6 @@ class GameProvider extends ChangeNotifier {
   List<Tile> _tiles = [];
   int _score = 0;
   int _highScore = 0;
-  bool _timerWon = false;
-
   // Daily Challenge State
   final DailyChallengeService _dailyService;
   final StatsService _statsService;
@@ -29,10 +27,6 @@ class GameProvider extends ChangeNotifier {
   bool _dailyCompletedThisGame = false;
   static const int _dailyTarget = 2048;
   int _moveCount = 0;
-
-  // Level Ladder State
-  bool _winPromptPending = false;
-  bool _winPromptShownThisGame = false;
 
   // Timer Challenge State
   bool _isTimerMode = false;
@@ -63,7 +57,7 @@ class GameProvider extends ChangeNotifier {
   Iterable<Tile> get _liveTiles => _tiles.where((t) => !t.isDeleting);
   int get score => _score;
   int get highScore => _highScore;
-  bool get isGameOver => _timerWon || (_isTimerMode && _remainingSeconds <= 0) || _hasNoLegalMove();
+  bool get isGameOver => (_isTimerMode && _remainingSeconds <= 0) || _hasNoLegalMove();
   bool get canUndo => _tilesHistory.isNotEmpty;
   int get undoCharges => _undoCharges;
   bool get needsUndoAd => _undoCharges == 0;
@@ -89,7 +83,6 @@ class GameProvider extends ChangeNotifier {
   bool get dailyCompletedThisGame => _dailyCompletedThisGame;
   StatsService get statsService => _statsService;
   LevelService get levelService => _levelService;
-  bool get winPromptPending => _winPromptPending;
   Level get currentLevel => Level.byIndex(_levelService.currentLevel);
 
   String _logSummary() {
@@ -163,32 +156,17 @@ class GameProvider extends ChangeNotifier {
     initGame();
   }
 
-  void continueAfterWin() {
-    _winPromptPending = false;
-    notifyListeners();
-  }
-
-  Future<void> advanceToNextLevel() async {
-    final next = Level.next(_levelService.currentLevel);
-    if (next != null) {
-      await _levelService.saveLevel(next.index);
-    }
-    _winPromptPending = false;
-    initGame();
-    _undoCharges = min(_undoCharges + 1, 10);
-    notifyListeners();
-  }
-
-  void _checkAndRecordGameEnd({bool targetReached = false}) {
+  void _checkAndRecordGameEnd() {
     if (_hasRecordedGame) return;
-    final int maxTile = _tiles.fold<int>(
-        0, (maxVal, tile) => tile.value > maxVal ? tile.value : maxVal);
-    final int target = _isDailyMode ? _dailyTarget : _targetValue;
-    final bool won = targetReached || maxTile >= target;
-
-    if (targetReached || isGameOver) {
+    if (isGameOver) {
       _hasRecordedGame = true;
-      _statsService.recordGameEnd(won: won, highestTile: maxTile);
+      final int maxTile = _tiles.fold<int>(
+          0, (maxVal, tile) => tile.value > maxVal ? tile.value : maxVal);
+      _statsService.recordGameEnd(won: false, highestTile: maxTile);
+      if (_isDailyMode && !_dailyCompletedThisGame) {
+        _dailyCompletedThisGame = true;
+        _dailyService.markCompleted().catchError((_) => 0);
+      }
     }
   }
 
@@ -207,15 +185,12 @@ class GameProvider extends ChangeNotifier {
     }
     _score = 0;
     _moveCount = 0;
-    _timerWon = false;
     _hasRecordedGame = false;
     _isSwapMode = false;
     _firstSelectedTile = null;
     _hasUsedExtraTime = false;
     _undoCharges = initialUndoCharges;
     _undoRefillsUsed = 0;
-    _winPromptPending = false;
-    _winPromptShownThisGame = false;
     _tilesHistory.clear();
     _scoreHistory.clear();
     _timerHistory.clear();
@@ -339,7 +314,7 @@ class GameProvider extends ChangeNotifier {
   }
 
   void _performSwap(Tile t1, Tile t2) {
-    if (_timerWon || (_isTimerMode && _remainingSeconds <= 0)) return;
+    if (_isTimerMode && _remainingSeconds <= 0) return;
     if (t1.isDeleting || t2.isDeleting) return;
 
     if (kDebugMode) {
@@ -478,24 +453,6 @@ class GameProvider extends ChangeNotifier {
             else if (val == 256) {bonusTime += 20;}
             else if (val == 512) {bonusTime += 30;}
             else if (val >= 1024) {bonusTime += 40;}
-
-            if (val >= _targetValue) {
-              _timerWon = true; // Win condition in timer mode
-            }
-          }
-
-          if (val >= (_isDailyMode ? _dailyTarget : _targetValue)) {
-            _checkAndRecordGameEnd(targetReached: true);
-          }
-
-          if (!_isTimerMode && !_isDailyMode && val >= _targetValue && !_winPromptShownThisGame) {
-            _winPromptShownThisGame = true;
-            _winPromptPending = true;
-          }
-
-          if (_isDailyMode && val >= _dailyTarget && !_dailyCompletedThisGame) {
-            _dailyCompletedThisGame = true;
-            _dailyService.markCompleted().catchError((_) => 0);
           }
 
           if (_score > _highScore) {
