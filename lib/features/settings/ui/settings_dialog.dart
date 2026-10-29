@@ -2,14 +2,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/update/update_service.dart';
+import '../../game/milestones/milestone_ladder.dart';
+import '../../game/providers/game_provider.dart';
+import '../../onboarding/how_to_play_tile.dart';
 import '../models/app_theme.dart';
 import '../providers/theme_provider.dart';
-import '../../game/providers/game_provider.dart';
-import '../../../core/update/update_service.dart';
 import 'ads_setting_tile.dart';
 import 'feedback_tile.dart';
 import 'stats_tile.dart';
-import '../../onboarding/how_to_play_tile.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -31,6 +32,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
     final game = context.watch<GameProvider>();
+
+    final titleName = titleForBestTile(game.statsService.bestTile);
+    final titleSubtitle = titleName != null
+        ? 'Title: $titleName'
+        : 'Title: none yet - reach 1024';
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -84,15 +90,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           _buildModeTile(
                             context,
                             'Normal Mode',
-                            'Level: ${game.currentLevel.name} (Goal ${game.currentLevel.target})',
+                            titleSubtitle,
                             Icons.videogame_asset,
                             () =>
                                 context.read<GameProvider>().setStandardMode(),
                           ),
                           _buildModeTile(
                             context,
-                            'Challenge: 1024',
-                            '300s to reach 1024',
+                            'Timed game: 5 min',
+                            'Beat the clock. Merges add bonus time.',
                             Icons.timer,
                             () => context
                                 .read<GameProvider>()
@@ -100,8 +106,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                           _buildModeTile(
                             context,
-                            'Challenge: 2048',
-                            '360s to reach 2048',
+                            'Timed game: 6 min',
+                            'Beat the clock. Merges add bonus time.',
                             Icons.timer,
                             () => context
                                 .read<GameProvider>()

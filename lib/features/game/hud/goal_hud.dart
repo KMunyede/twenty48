@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../settings/providers/theme_provider.dart';
+import '../milestones/milestone_ladder.dart';
 import '../providers/game_provider.dart';
 import 'goal_progress.dart';
 import 'motivation_lines.dart';
@@ -13,16 +14,28 @@ class GoalHud extends StatelessWidget {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return Consumer<GameProvider>(
       builder: (context, game, child) {
-        if (game.isTimerMode) return const SizedBox.shrink();
-
-        final target = game.currentGameTarget;
         final highest = game.highestTile;
-        final fraction = progressFraction(highest, target);
+        final next = nextMilestone(highest);
+
+        final String headerText;
+        final double fraction;
+        final int targetVal;
+
+        if (next != null) {
+          headerText = 'NEXT: ${next.value} ${next.title}';
+          targetVal = next.value;
+          fraction = progressFraction(highest, next.value);
+        } else {
+          headerText = 'TOP MILESTONE - Walking Legend';
+          targetVal = 131072;
+          fraction = 1.0;
+        }
+
         final currentBand = band(fraction);
         final motivation = MotivationLines.getLine(
           band: currentBand,
           moveCount: game.moveCount,
-          target: target,
+          target: targetVal,
           isGameOver: game.isGameOver,
         );
 
@@ -37,9 +50,7 @@ class GoalHud extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      game.isDailyMode
-                          ? 'DAILY GOAL $target'
-                          : '${game.currentLevel.name} - GOAL $target',
+                      headerText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -68,7 +79,8 @@ class GoalHud extends StatelessWidget {
                   value: fraction,
                   minHeight: 6,
                   backgroundColor: theme.textColor.withValues(alpha: 0.3),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE65100)),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Color(0xFFE65100)),
                 ),
               ),
               const SizedBox(height: 6),

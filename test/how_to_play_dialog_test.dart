@@ -33,7 +33,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Page 2
-      expect(find.text('Reach the target'), findsOneWidget);
+      expect(find.text('Keep going'), findsOneWidget);
       expect(find.text('Next'), findsOneWidget);
 
       // Tap Next to go to Page 3

@@ -14,7 +14,7 @@ class StatsTile extends StatelessWidget {
       leading: Icon(Icons.bar_chart, color: theme.textColor),
       title: Text('Your stats', style: TextStyle(color: theme.textColor)),
       subtitle: Text(
-        'Games, wins and streaks',
+        'Games, milestones and streaks',
         style: TextStyle(color: theme.textColor.withValues(alpha: 0.7)),
       ),
       onTap: () {

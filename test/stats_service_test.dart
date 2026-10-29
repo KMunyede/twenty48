@@ -59,5 +59,29 @@ void main() {
       expect(service2.wins, equals(1));
       expect(service2.bestTile, equals(1024));
     });
+
+    test('recordMilestone raises bestTile only if larger, increments milestonesReached each call, and persists',
+        () async {
+      final service1 = StatsService();
+      await service1.load();
+      expect(service1.milestonesReached, equals(0));
+
+      await service1.recordMilestone(1024);
+      expect(service1.bestTile, equals(1024));
+      expect(service1.milestonesReached, equals(1));
+
+      await service1.recordMilestone(512); // smaller than 1024
+      expect(service1.bestTile, equals(1024));
+      expect(service1.milestonesReached, equals(2));
+
+      await service1.recordMilestone(2048); // larger
+      expect(service1.bestTile, equals(2048));
+      expect(service1.milestonesReached, equals(3));
+
+      final service2 = StatsService();
+      await service2.load();
+      expect(service2.bestTile, equals(2048));
+      expect(service2.milestonesReached, equals(3));
+    });
   });
 }

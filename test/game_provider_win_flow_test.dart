@@ -40,5 +40,40 @@ void main() {
       expect(game.highestTile, equals(2048));
       expect(game.isGameOver, isFalse);
     });
+
+    test('a merge reaching 1024 sets pendingMilestone once, game does not end, undo/re-merge does not celebrate again, new game clears set', () async {
+      SharedPreferences.setMockInitialValues({});
+      final game = GameProvider();
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      game.setStandardMode();
+      game.setTilesForTesting([
+        Tile(id: '1', x: 0, y: 0, value: 512),
+        Tile(id: '2', x: 0, y: 1, value: 512),
+      ]);
+      game.moveLeft();
+
+      expect(game.pendingMilestone?.value, equals(1024));
+      expect(game.pendingMilestone?.title, equals('Certified Prodigy'));
+      expect(game.isGameOver, isFalse);
+
+      game.clearPendingMilestone();
+      expect(game.pendingMilestone, isNull);
+
+      // Undo and re-merge
+      game.undo();
+      game.moveLeft();
+      // Must NOT celebrate again in the same game
+      expect(game.pendingMilestone, isNull);
+
+      // New game clears the celebrated set
+      game.initGame();
+      game.setTilesForTesting([
+        Tile(id: '3', x: 0, y: 0, value: 512),
+        Tile(id: '4', x: 0, y: 1, value: 512),
+      ]);
+      game.moveLeft();
+      expect(game.pendingMilestone?.value, equals(1024));
+    });
   });
 }

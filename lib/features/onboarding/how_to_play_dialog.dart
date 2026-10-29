@@ -21,9 +21,9 @@ class _HowToPlayDialogState extends State<HowToPlayDialog> {
       icon: Icons.swipe,
     ),
     _PageData(
-      title: 'Reach the target',
+      title: 'Keep going',
       description:
-          'Reach the goal tile to win! Choose Next level, Keep going, or New game. Higher levels start with a bonus tile and you earn +1 Undo for levelling up.',
+          'There is no final win. Merge tiles to hit milestones (1024, 2048, 4096 and beyond) and earn titles. The game ends when no moves are left.',
       icon: Icons.emoji_events,
     ),
     _PageData(

@@ -8,10 +8,12 @@ class StatsService {
   int _gamesPlayed = 0;
   int _wins = 0;
   int _bestTile = 0;
+  int _milestonesReached = 0;
 
   int get gamesPlayed => _gamesPlayed;
   int get wins => _wins;
   int get bestTile => _bestTile;
+  int get milestonesReached => _milestonesReached;
 
   double get winRate => _gamesPlayed > 0 ? (_wins / _gamesPlayed) * 100 : 0.0;
   String get formattedWinRate =>
@@ -43,8 +45,23 @@ class StatsService {
       _gamesPlayed = prefs.getInt('stats_gamesPlayed') ?? 0;
       _wins = prefs.getInt('stats_wins') ?? 0;
       _bestTile = prefs.getInt('stats_bestTile') ?? 0;
+      _milestonesReached = prefs.getInt('stats_milestones') ?? 0;
     } catch (_) {
       // Keep defaults on error
+    }
+  }
+
+  Future<void> recordMilestone(int value) async {
+    try {
+      await load();
+      _bestTile = max(_bestTile, value);
+      _milestonesReached += 1;
+
+      final prefs = await _getPrefs();
+      await prefs.setInt('stats_bestTile', _bestTile);
+      await prefs.setInt('stats_milestones', _milestonesReached);
+    } catch (_) {
+      // Ignore write errors
     }
   }
 

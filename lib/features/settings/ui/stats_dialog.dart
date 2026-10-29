@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/daily_challenge_service.dart';
 import '../../../core/services/stats_service.dart';
+import '../../game/milestones/milestone_ladder.dart';
+import '../../game/providers/game_provider.dart';
 import '../models/app_theme.dart';
 import '../providers/theme_provider.dart';
-import '../../game/providers/game_provider.dart';
 
 class StatsDialog extends StatefulWidget {
   final StatsService? statsService;
@@ -53,6 +54,9 @@ class _StatsDialogState extends State<StatsDialog> {
     final theme = context.watch<ThemeProvider>().currentTheme;
     final gameProvider = context.watch<GameProvider>();
 
+    final String titleText = titleForBestTile(_statsService.bestTile) ??
+        'None yet - reach 1024';
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       backgroundColor: theme.backgroundColor,
@@ -87,8 +91,8 @@ class _StatsDialogState extends State<StatsDialog> {
                 Column(
                   children: [
                     _buildStatRow(
-                      'Rank',
-                      gameProvider.currentLevel.name,
+                      'Title',
+                      titleText,
                       theme,
                     ),
                     _buildStatRow(
@@ -97,13 +101,8 @@ class _StatsDialogState extends State<StatsDialog> {
                       theme,
                     ),
                     _buildStatRow(
-                      'Wins',
-                      '${_statsService.wins}',
-                      theme,
-                    ),
-                    _buildStatRow(
-                      'Win rate',
-                      _statsService.formattedWinRate,
+                      'Milestones reached',
+                      '${_statsService.milestonesReached}',
                       theme,
                     ),
                     _buildStatRow(

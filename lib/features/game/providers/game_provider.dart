@@ -9,6 +9,7 @@ import 'package:twenty48/core/services/daily_challenge_service.dart';
 import 'package:twenty48/core/services/stats_service.dart';
 import 'package:twenty48/features/game/levels/level_ladder.dart';
 import 'package:twenty48/features/game/levels/level_service.dart';
+import '../milestones/milestone_ladder.dart';
 import '../models/tile.dart';
 
 class GameProvider extends ChangeNotifier {
@@ -53,6 +54,10 @@ class GameProvider extends ChangeNotifier {
   int _celebrationId = 0; // To trigger UI updates for the same target reached twice
   bool _hasUsedExtraTime = false;
 
+  // Milestone State
+  final Set<int> _celebratedMilestones = {};
+  Milestone? _pendingMilestone;
+
   List<Tile> get tiles => _tiles;
   Iterable<Tile> get _liveTiles => _tiles.where((t) => !t.isDeleting);
   int get score => _score;
@@ -81,9 +86,15 @@ class GameProvider extends ChangeNotifier {
   bool get hasUsedExtraTime => _hasUsedExtraTime;
   bool get isDailyMode => _isDailyMode;
   bool get dailyCompletedThisGame => _dailyCompletedThisGame;
+  Milestone? get pendingMilestone => _pendingMilestone;
   StatsService get statsService => _statsService;
   LevelService get levelService => _levelService;
   Level get currentLevel => Level.byIndex(_levelService.currentLevel);
+
+  void clearPendingMilestone() {
+    _pendingMilestone = null;
+    notifyListeners();
+  }
 
   String _logSummary() {
     final tilesStr = _tiles.map((t) => '${t.x},${t.y}=${t.value}').join(' ');
@@ -189,6 +200,8 @@ class GameProvider extends ChangeNotifier {
     _isSwapMode = false;
     _firstSelectedTile = null;
     _hasUsedExtraTime = false;
+    _celebratedMilestones.clear();
+    _pendingMilestone = null;
     _undoCharges = initialUndoCharges;
     _undoRefillsUsed = 0;
     _tilesHistory.clear();
@@ -464,6 +477,15 @@ class GameProvider extends ChangeNotifier {
           if (val >= 1024 && [1024, 2048, 4096, 8192].contains(val)) {
             _shouldCelebrate = true;
             _celebrationId++;
+          }
+
+          final milestoneIndex =
+              milestoneLadder.indexWhere((m) => m.value == val);
+          if (milestoneIndex != -1 && !_celebratedMilestones.contains(val)) {
+            final milestone = milestoneLadder[milestoneIndex];
+            _celebratedMilestones.add(val);
+            _statsService.recordMilestone(val);
+            _pendingMilestone = milestone;
           }
 
           // First tile stays and becomes the new merged tile

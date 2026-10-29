@@ -17,6 +17,8 @@ import '../../onboarding/how_to_play_dialog.dart';
 import '../../onboarding/how_to_play_service.dart';
 import '../../onboarding/help_button.dart';
 import '../hud/goal_hud.dart';
+import '../milestones/milestone_celebration.dart';
+import '../milestones/milestone_ladder.dart';
 import 'widgets/tile_widget.dart';
 import 'game_over_dialog.dart';
 import 'exit_confirm_dialog.dart';
@@ -123,9 +125,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           final message = game.isTimerMode && game.remainingSeconds <= 0
               ? 'You ran out of time.'
               : 'No more moves';
-          final levelName = !game.isTimerMode && !game.isDailyMode
-              ? game.currentLevel.name
-              : null;
+          final String? levelName = null;
 
           showDialog(
             context: context,
@@ -418,6 +418,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             right: 50,
             child: _BonusTimeAnimation(bonus: game.lastBonusTime),
           ),
+        if (game.pendingMilestone != null)
+          Positioned(
+            top: 60,
+            left: 24,
+            right: 24,
+            child: MilestoneCelebrationCard(
+              milestone: game.pendingMilestone!,
+              onDismiss: () => game.clearPendingMilestone(),
+            ),
+          ),
       ],
     );
   }
@@ -431,6 +441,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final theme = context.watch<ThemeProvider>().currentTheme;
     return Consumer<GameProvider>(
       builder: (context, game, child) {
+        final nextMs = nextMilestone(game.highestTile);
+        final targetDisplay = nextMs?.value ?? 131072;
+
         final children = [
           _buildScoreBox(
             'SCORE',
@@ -473,7 +486,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     ),
                   ),
                   Text(
-                    '${game.targetValue}',
+                    '$targetDisplay',
                     style: TextStyle(
                       color: theme.textColor,
                       fontWeight: FontWeight.bold,
