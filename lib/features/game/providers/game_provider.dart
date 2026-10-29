@@ -96,6 +96,15 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void debugPreviewMilestone(int value) {
+    if (!kDebugMode) return;
+    final index = milestoneLadder.indexWhere((m) => m.value == value);
+    if (index != -1) {
+      _pendingMilestone = milestoneLadder[index];
+      notifyListeners();
+    }
+  }
+
   String _logSummary() {
     final tilesStr = _tiles.map((t) => '${t.x},${t.y}=${t.value}').join(' ');
     return 'score=$_score tiles=${_tiles.length} gameOver=$isGameOver tiles=[$tilesStr]';

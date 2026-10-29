@@ -1,5 +1,6 @@
 // lib/features/settings/ui/settings_dialog.dart
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/update/update_service.dart';
@@ -21,6 +22,7 @@ class SettingsDialog extends StatefulWidget {
 }
 
 class _SettingsDialogState extends State<SettingsDialog> {
+  static int _debugMilestoneIndex = 0;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -207,6 +209,38 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           ),
                           const AdsSettingTile(),
                           const FeedbackTile(),
+                          if (kDebugMode) ...[
+                            Divider(
+                              color: theme.textColor.withValues(alpha: 0.3),
+                            ),
+                            ListTile(
+                              leading: Icon(
+                                Icons.bug_report,
+                                color: theme.textColor,
+                              ),
+                              title: Text(
+                                'Preview milestone card (debug)',
+                                style: TextStyle(color: theme.textColor),
+                              ),
+                              subtitle: Text(
+                                'Debug builds only',
+                                style: TextStyle(
+                                  color: theme.textColor.withValues(alpha: 0.7),
+                                ),
+                              ),
+                              onTap: () {
+                                final val =
+                                    milestoneLadder[_debugMilestoneIndex].value;
+                                _debugMilestoneIndex =
+                                    (_debugMilestoneIndex + 1) %
+                                        milestoneLadder.length;
+                                context
+                                    .read<GameProvider>()
+                                    .debugPreviewMilestone(val);
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
                         ],
                       ),
                     ),
