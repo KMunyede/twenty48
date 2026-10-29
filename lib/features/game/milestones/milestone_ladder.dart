@@ -12,28 +12,33 @@ class Milestone {
 
 const List<Milestone> milestoneLadder = [
   Milestone(
+    value: 256,
+    title: 'Great Tactician',
+    hype: 'Look at you go. The tiles are starting to listen.',
+  ),
+  Milestone(
     value: 512,
     title: 'Rising Star',
     hype: "Now we're talking. The board is paying attention.",
   ),
   Milestone(
     value: 1024,
-    title: 'Certified Prodigy',
+    title: 'True Prodigy',
     hype: "You're moving with suspicious confidence. This isn't luck anymore.",
   ),
   Milestone(
     value: 2048,
-    title: 'Undisputed Champion',
+    title: 'Grand Champion',
     hype: 'You beat the classic game. Take a victory lap and stretch your hands.',
   ),
   Milestone(
     value: 4096,
-    title: 'Big Brain Specialist',
+    title: 'Big Brain',
     hype: 'Normal people stop at 2048. You chose to show off.',
   ),
   Milestone(
     value: 8192,
-    title: 'Cold-Blooded Tactician',
+    title: 'Cold Blooded',
     hype: 'Four moves ahead? Try ten. Borderline psychic.',
   ),
   Milestone(
@@ -59,7 +64,7 @@ const List<Milestone> milestoneLadder = [
 ];
 
 String? titleForBestTile(int best) {
-  if (best < 512) return null;
+  if (best < 256) return null;
   String? result;
   for (final m in milestoneLadder) {
     if (m.value <= best) {
@@ -78,4 +83,12 @@ Milestone? nextMilestone(int highestTile) {
     }
   }
   return null;
+}
+
+String goalLineText(int highestTile) {
+  final next = nextMilestone(highestTile);
+  if (next != null) {
+    return 'Your Next Big Tile: ${next.value} - ${next.title}';
+  }
+  return 'TOP MILESTONE - Walking Legend';
 }

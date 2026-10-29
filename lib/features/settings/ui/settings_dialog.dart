@@ -37,7 +37,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     final titleName = titleForBestTile(game.statsService.bestTile);
     final titleSubtitle = titleName != null
         ? 'Title: $titleName'
-        : 'Title: none yet - reach 512';
+        : 'Title: none yet - reach 256';
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),

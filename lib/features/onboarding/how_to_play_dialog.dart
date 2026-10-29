@@ -23,7 +23,7 @@ class _HowToPlayDialogState extends State<HowToPlayDialog> {
     _PageData(
       title: 'Keep going',
       description:
-          'Merge tiles to hit milestones (512, 1024, 2048 and beyond) and earn titles. There is no final win. The game ends when no moves are left.',
+          'Merge tiles to hit milestones (256, 512, 1024 and beyond) and earn titles. There is no final win. The game ends when no moves are left.',
       icon: Icons.emoji_events,
     ),
     _PageData(

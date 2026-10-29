@@ -55,7 +55,7 @@ class _StatsDialogState extends State<StatsDialog> {
     final gameProvider = context.watch<GameProvider>();
 
     final String titleText = titleForBestTile(_statsService.bestTile) ??
-        'None yet - reach 512';
+        'None yet - reach 256';
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),

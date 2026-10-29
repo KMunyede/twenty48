@@ -41,6 +41,33 @@ void main() {
       expect(game.isGameOver, isFalse);
     });
 
+    test('a merge creating a 256 tile sets pendingMilestone to the 256 milestone once and does not end the game', () async {
+      SharedPreferences.setMockInitialValues({});
+      final game = GameProvider();
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      game.setStandardMode();
+      game.setTilesForTesting([
+        Tile(id: '1', x: 0, y: 0, value: 128),
+        Tile(id: '2', x: 0, y: 1, value: 128),
+      ]);
+      game.moveLeft();
+
+      expect(game.highestTile, equals(256));
+      expect(game.pendingMilestone?.value, equals(256));
+      expect(game.pendingMilestone?.title, equals('Great Tactician'));
+      expect(game.isGameOver, isFalse);
+
+      game.clearPendingMilestone();
+      expect(game.pendingMilestone, isNull);
+
+      // Undo and re-merge
+      game.undo();
+      game.moveLeft();
+      // Must NOT celebrate again in the same game
+      expect(game.pendingMilestone, isNull);
+    });
+
     test('a merge creating a 512 tile sets pendingMilestone to the 512 milestone once and does not end the game', () async {
       SharedPreferences.setMockInitialValues({});
       final game = GameProvider();
@@ -81,7 +108,7 @@ void main() {
       game.moveLeft();
 
       expect(game.pendingMilestone?.value, equals(1024));
-      expect(game.pendingMilestone?.title, equals('Certified Prodigy'));
+      expect(game.pendingMilestone?.title, equals('True Prodigy'));
       expect(game.isGameOver, isFalse);
 
       game.clearPendingMilestone();

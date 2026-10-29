@@ -16,17 +16,15 @@ class GoalHud extends StatelessWidget {
       builder: (context, game, child) {
         final highest = game.highestTile;
         final next = nextMilestone(highest);
+        final headerText = goalLineText(highest);
 
-        final String headerText;
         final double fraction;
         final int targetVal;
 
         if (next != null) {
-          headerText = 'NEXT: ${next.value} ${next.title}';
           targetVal = next.value;
           fraction = progressFraction(highest, next.value);
         } else {
-          headerText = 'TOP MILESTONE - Walking Legend';
           targetVal = 131072;
           fraction = 1.0;
         }

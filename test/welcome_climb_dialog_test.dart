@@ -42,7 +42,7 @@ void main() {
       expect(find.text('Climb the ranks'), findsOneWidget);
       expect(
         find.text(
-            'Merge tiles to reach 512 and become a Rising Star. Then 1024, 2048, 4096 and on, all the way to Walking Legend at 131,072. Every new tile earns a title. How high can you go?'),
+            'Merge tiles to reach 256 and earn your first title, Great Tactician. Then 512, 1024, 2048 and on, all the way to Walking Legend at 131,072. Every new tile earns a title. How high can you go?'),
         findsOneWidget,
       );
       expect(find.text("Let's climb"), findsOneWidget);
