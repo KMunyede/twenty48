@@ -12,6 +12,11 @@ class Milestone {
 
 const List<Milestone> milestoneLadder = [
   Milestone(
+    value: 512,
+    title: 'Rising Star',
+    hype: "Now we're talking. The board is paying attention.",
+  ),
+  Milestone(
     value: 1024,
     title: 'Certified Prodigy',
     hype: "You're moving with suspicious confidence. This isn't luck anymore.",
@@ -54,7 +59,7 @@ const List<Milestone> milestoneLadder = [
 ];
 
 String? titleForBestTile(int best) {
-  if (best < 1024) return null;
+  if (best < 512) return null;
   String? result;
   for (final m in milestoneLadder) {
     if (m.value <= best) {

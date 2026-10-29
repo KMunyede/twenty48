@@ -6,6 +6,7 @@ import '../../../core/update/update_service.dart';
 import '../../game/milestones/milestone_ladder.dart';
 import '../../game/providers/game_provider.dart';
 import '../../onboarding/how_to_play_tile.dart';
+import '../../onboarding/welcome_climb_dialog.dart';
 import '../models/app_theme.dart';
 import '../providers/theme_provider.dart';
 import 'ads_setting_tile.dart';
@@ -36,7 +37,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     final titleName = titleForBestTile(game.statsService.bestTile);
     final titleSubtitle = titleName != null
         ? 'Title: $titleName'
-        : 'Title: none yet - reach 1024';
+        : 'Title: none yet - reach 512';
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -76,6 +77,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
                             color: theme.textColor.withValues(alpha: 0.3),
                           ),
                           const StatsTile(),
+                          Divider(
+                            color: theme.textColor.withValues(alpha: 0.3),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.emoji_events, color: theme.textColor),
+                            title: Text('The climb', style: TextStyle(color: theme.textColor)),
+                            subtitle: Text(
+                              'Milestones and titles',
+                              style: TextStyle(color: theme.textColor.withValues(alpha: 0.7)),
+                            ),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => const WelcomeClimbDialog(),
+                              );
+                            },
+                          ),
                           Divider(
                             color: theme.textColor.withValues(alpha: 0.3),
                           ),

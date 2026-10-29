@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../../../core/services/ad_service.dart';
+import '../../../core/services/welcome_service.dart';
 import '../../../core/theme/contrast_text.dart';
 import '../../../core/theme/dialog_colors.dart';
 import '../../../core/update/update_service.dart';
@@ -15,6 +16,7 @@ import '../../settings/providers/theme_provider.dart';
 import '../../settings/ui/settings_dialog.dart';
 import '../../onboarding/how_to_play_dialog.dart';
 import '../../onboarding/how_to_play_service.dart';
+import '../../onboarding/welcome_climb_dialog.dart';
 import '../../onboarding/help_button.dart';
 import '../hud/goal_hud.dart';
 import '../milestones/milestone_celebration.dart';
@@ -60,12 +62,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
 
     // Request focus after first frame to enable keyboard input
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_focusNode.canRequestFocus) {
         _focusNode.requestFocus();
       }
       UpdateService().checkOnLaunch();
-      _checkHowToPlay();
+      await _checkHowToPlay();
+      await _checkWelcomeClimb();
     });
   }
 
@@ -78,6 +81,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         builder: (context) => const HowToPlayDialog(),
       );
       await howToPlayService.markSeen();
+    }
+  }
+
+  Future<void> _checkWelcomeClimb() async {
+    final welcomeService = WelcomeService();
+    final hasSeen = await welcomeService.seen;
+    if (!hasSeen && mounted) {
+      if (ModalRoute.of(context)?.isCurrent == true) {
+        await showDialog(
+          context: context,
+          builder: (context) => const WelcomeClimbDialog(),
+        );
+        await welcomeService.markSeen();
+      }
     }
   }
 
@@ -125,7 +142,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           final message = game.isTimerMode && game.remainingSeconds <= 0
               ? 'You ran out of time.'
               : 'No more moves';
-          final String? levelName = null;
 
           showDialog(
             context: context,
@@ -135,7 +151,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               message: message,
               score: game.score,
               bestScore: game.highScore,
-              levelName: levelName,
               canUndo: game.canUndo && game.undoCharges > 0,
               onNewGame: () {
                 final moves = game.moveCount;
