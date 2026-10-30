@@ -26,7 +26,8 @@ import 'game_over_dialog.dart';
 import 'exit_confirm_dialog.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final Widget Function(BuildContext)? adSlotBuilder;
+  const GameScreen({super.key, this.adSlotBuilder});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -296,6 +297,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildPortraitLayout(BuildContext context, GameProvider game) {
+    final boardWidth = MediaQuery.of(context).size.width - 32.0;
     return Stack(
       children: [
         Padding(
@@ -310,12 +312,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 4),
                 const GoalHud(),
               ],
-              const Spacer(),
-              _buildAnimatedGameBoard(),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.bottomCenter,
+                    child: SizedBox(
+                      width: boardWidth,
+                      height: boardWidth,
+                      child: _buildAnimatedGameBoard(),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               _buildControls(context),
               const SizedBox(height: 16),
-              const AdBannerWidget(),
+              widget.adSlotBuilder?.call(context) ?? const AdBannerWidget(),
             ],
           ),
         ),

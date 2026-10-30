@@ -246,7 +246,12 @@ class AdService {
       size: adSize,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (ad) => onLoaded(),
+        onAdLoaded: (ad) {
+          if (kDebugMode && ad is BannerAd) {
+            debugPrint('AD size loaded: ${ad.size.width}x${ad.size.height}');
+          }
+          onLoaded();
+        },
         onAdFailedToLoad: (ad, error) {
           debugPrint('BannerAd failed to load: code ${error.code}, message: ${error.message}');
           ad.dispose();
