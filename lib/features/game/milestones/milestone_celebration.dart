@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../settings/models/app_theme.dart';
 import '../../settings/providers/theme_provider.dart';
+import 'card_colors.dart';
 import 'milestone_ladder.dart';
 
 class MilestoneCelebrationCard extends StatefulWidget {
-  static const Duration autoDismissDuration = Duration(seconds: 6);
+  static const Duration autoDismissDuration = Duration(seconds: 20);
 
   final Milestone milestone;
   final VoidCallback onDismiss;
@@ -16,30 +16,6 @@ class MilestoneCelebrationCard extends StatefulWidget {
     required this.milestone,
     required this.onDismiss,
   });
-
-  static Color getCardTextColor(AppTheme theme) {
-    switch (theme.name) {
-      case 'Turtle green':
-        return const Color(0xFF0F380F);
-      case 'Sunset Orange':
-        return const Color(0xFF3E2723);
-      case 'Oceanic Blue':
-        return const Color(0xFF003B6B);
-      case 'Rare Indigo':
-      case 'Arctic White':
-      case 'Rhino Grey':
-      default:
-        return theme.textColor;
-    }
-  }
-
-  static Color getCardHypeColor(AppTheme theme) {
-    final textColor = getCardTextColor(theme);
-    if (theme.name == 'Rhino Grey') {
-      return textColor.withValues(alpha: 0.85);
-    }
-    return textColor.withValues(alpha: 0.90);
-  }
 
   @override
   State<MilestoneCelebrationCard> createState() =>
@@ -81,74 +57,113 @@ class _MilestoneCelebrationCardState extends State<MilestoneCelebrationCard> {
   @override
   Widget build(BuildContext context) {
     final theme = context.watch<ThemeProvider>().currentTheme;
-    final headingColor = MilestoneCelebrationCard.getCardTextColor(theme);
-    final hypeColor = MilestoneCelebrationCard.getCardHypeColor(theme);
+    final screenBg = theme.backgroundColor;
+    final isDark = screenBg.computeLuminance() < 0.5;
 
-    return GestureDetector(
-      onTap: widget.onDismiss,
-      child: Card(
-        elevation: 6,
-        shadowColor: Colors.black38,
-        color: theme.backgroundColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: theme.boardColor,
-            width: 2.0,
-          ),
+    final cardSurface = Color.alphaBlend(
+      const Color(0xFFFFFFFF).withValues(alpha: isDark ? 0.12 : 0.55),
+      screenBg,
+    );
+
+    final borderColor = ensureContrast(theme.boardColor, screenBg, 3.0);
+
+    final startTrophyColor =
+        isDark ? const Color(0xFFFFA726) : const Color(0xFFE65100);
+    final trophyColor = ensureContrast(startTrophyColor, cardSurface, 3.0);
+
+    final textColor = ensureContrast(theme.textColor, cardSurface, 4.5);
+
+    final startButtonFill =
+        isDark ? const Color(0xFFFFA726) : const Color(0xFFE65100);
+    final buttonFill = ensureContrast(startButtonFill, cardSurface, 3.0);
+
+    final okLabelColor =
+        ensureContrast(const Color(0xFFFFFFFF), buttonFill, 4.5);
+
+    return Card(
+      elevation: 12,
+      shadowColor: Colors.black38,
+      color: cardSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: borderColor,
+          width: 3.0,
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Stack(
-            children: [
-              const Positioned(
-                left: 0,
-                top: 0,
-                child: Icon(
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
                   Icons.emoji_events,
-                  color: Color(0xFFFFC107), // Amber/gold
-                  size: 20,
+                  color: trophyColor,
+                  size: 40,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${widget.milestone.value}',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.milestone.title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '"${widget.milestone.hype}"',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Material(
+                color: buttonFill,
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  onTap: widget.onDismiss,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 8.0,
+                    ),
+                    child: Text(
+                      'OK',
+                      style: TextStyle(
+                        color: okLabelColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${widget.milestone.value}',
-                      style: TextStyle(
-                        color: headingColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.milestone.title,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: headingColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '"${widget.milestone.hype}"',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: hypeColor,
-                        fontSize: 13,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
